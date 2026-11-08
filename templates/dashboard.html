@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% block content %}
+<div class="welcome"><div><div class="eyebrow">SYSTEM STATUS / LOCAL</div><h2>Security workspace ready.</h2><p class="muted">Welcome, {{ current_user }}. Choose a tool to begin your assessment.</p></div><div class="pulse-card"><span class="status-dot"></span> APPLICATION ONLINE</div></div>
+<div class="stats">
+<div class="stat"><span>ACCOUNT EVENTS</span><strong>{{ event_count }}</strong><small>Recorded actions</small></div>
+<div class="stat"><span>AVAILABLE TOOLS</span><strong>07</strong><small>Local security utilities</small></div>
+<div class="stat"><span>MODE</span><strong>LOCAL</strong><small>127.0.0.1 only</small></div>
+</div>
+<div class="section-head"><div><div class="eyebrow">TOOLKIT</div><h2>Security modules</h2></div></div>
+<div class="tool-grid">
+<a class="tool-card" href="{{ url_for('password_page') }}"><b>◈</b><h3>Password audit</h3><p>Review password composition and length.</p><span>OPEN TOOL ↗</span></a>
+<a class="tool-card" href="{{ url_for('hash_page') }}"><b>⌗</b><h3>Hash generator</h3><p>Create SHA-256 and SHA-512 digests.</p><span>OPEN TOOL ↗</span></a>
+<a class="tool-card" href="{{ url_for('url_page') }}"><b>◎</b><h3>URL analyzer</h3><p>Inspect suspicious URL characteristics.</p><span>OPEN TOOL ↗</span></a>
+<a class="tool-card" href="{{ url_for('dns_page') }}"><b>⌁</b><h3>DNS analyzer</h3><p>Resolve common DNS record types.</p><span>OPEN TOOL ↗</span></a>
+<a class="tool-card" href="{{ url_for('ssl_page') }}"><b>◇</b><h3>TLS checker</h3><p>Inspect a site's TLS certificate.</p><span>OPEN TOOL ↗</span></a>
+<a class="tool-card" href="{{ url_for('network_page') }}"><b>⌖</b><h3>LAN port check</h3><p>Check selected TCP ports on an authorized private IP.</p><span>OPEN TOOL ↗</span></a>
+<a class="tool-card" href="{{ url_for('log_page') }}"><b>≋</b><h3>Log analyzer</h3><p>Find common security event indicators.</p><span>OPEN TOOL ↗</span></a>
+</div>
+<div class="panel"><div class="section-head"><div><div class="eyebrow">AUDIT TRAIL</div><h2>Recent activity</h2></div><a href="{{ url_for('activity') }}">View all →</a></div>
+{% if recent %}<div class="table-wrap"><table><tr><th>EVENT</th><th>DETAILS</th><th>TIME (UTC)</th></tr>{% for row in recent %}<tr><td>{{ row.event_type }}</td><td>{{ row.details }}</td><td>{{ row.created_at[:19].replace("T"," ") }}</td></tr>{% endfor %}</table></div>{% else %}<p class="muted">No activity recorded yet. Open a security tool to get started.</p>{% endif %}</div>
+{% endblock %}

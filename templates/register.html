@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block content %}
+<div class="auth-wrap"><div class="auth-card">
+<div class="eyebrow">CREATE WORKSPACE</div><h2>Create account</h2><p class="muted">Set up your local SentinelX profile.</p>
+<form method="post" class="form">
+<label>Username<input name="username" required minlength="3" maxlength="30" autocomplete="username"></label>
+<label>Email<input type="email" name="email" required autocomplete="email"></label>
+<label>Password<input type="password" name="password" required minlength="10" autocomplete="new-password"><small>Minimum 10 characters.</small></label>
+<button class="btn primary full">Create account <span>→</span></button>
+</form><p class="muted center">Already registered? <a href="{{ url_for('login') }}">Sign in</a></p>
+</div></div>{% endblock %}

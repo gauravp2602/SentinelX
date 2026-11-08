@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title or "SentinelX" }} · SentinelX</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="{{ url_for('dashboard') }}"><span class="brand-mark">S</span><span>Sentinel<span class="accent">X</span><small>SECURITY CONSOLE</small></span></a>
+    {% if current_user %}
+    <div class="nav-label">WORKSPACE</div>
+    <a class="nav-link" href="{{ url_for('dashboard') }}">▦ &nbsp; Overview</a>
+    <div class="nav-label">SECURITY TOOLS</div>
+    <a class="nav-link" href="{{ url_for('password_page') }}">◈ &nbsp; Password audit</a>
+    <a class="nav-link" href="{{ url_for('hash_page') }}">⌗ &nbsp; Hash generator</a>
+    <a class="nav-link" href="{{ url_for('url_page') }}">◎ &nbsp; URL analyzer</a>
+    <a class="nav-link" href="{{ url_for('dns_page') }}">⌁ &nbsp; DNS analyzer</a>
+    <a class="nav-link" href="{{ url_for('ssl_page') }}">◇ &nbsp; TLS checker</a>
+    <a class="nav-link" href="{{ url_for('network_page') }}">⌖ &nbsp; LAN port check</a>
+    <a class="nav-link" href="{{ url_for('log_page') }}">≋ &nbsp; Log analyzer</a>
+    <div class="nav-label">ACCOUNT</div>
+    <a class="nav-link" href="{{ url_for('activity') }}">◷ &nbsp; Activity log</a>
+    <form method="post" action="{{ url_for('logout') }}"><button class="nav-link logout">↪ &nbsp; Sign out</button></form>
+    {% endif %}
+    <div class="sidebar-bottom"><span class="status-dot"></span> LOCAL CONSOLE <small>Educational build</small></div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><div><span class="eyebrow">SECURITY OPERATIONS</span><h1>{{ title or "Overview" }}</h1></div>
+      {% if current_user %}<div class="user-chip"><span class="avatar">{{ current_user[0]|upper }}</span>{{ current_user }}</div>{% endif %}
+    </header>
+    <section class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}{% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </section>
+    <footer>SentinelX <span>·</span> Local cybersecurity learning environment <span>·</span> Use responsibly</footer>
+  </main>
+</div>
+</body></html>

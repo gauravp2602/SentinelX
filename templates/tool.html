@@ -1,0 +1,38 @@
+{% extends "base.html" %}{% block content %}
+<div class="tool-intro"><p>{{ description }}</p></div>
+<div class="panel tool-panel">
+<form method="post" class="form">
+{% if tool == "password" %}
+<label>Password to audit<input type="password" name="password" required autocomplete="off" placeholder="Enter a test password"></label>
+{% elif tool == "hash" %}
+<label>Text to hash<textarea name="text" rows="4" required placeholder="Enter text"></textarea></label>
+{% elif tool == "url" %}
+<label>URL or hostname<input name="url" required placeholder="https://example.com"></label>
+{% elif tool == "dns" %}
+<label>Domain name<input name="domain" required placeholder="example.com"></label>
+{% elif tool == "ssl" %}
+<label>Hostname<input name="hostname" required placeholder="example.com"></label>
+{% elif tool == "network" %}
+<label>Private LAN IP address<input name="host" required placeholder="192.168.1.10"></label>
+<label>TCP ports (1–20, range 1–1024)<input name="ports" value="22,80,443"></label>
+<label class="check"><input type="checkbox" name="authorized" value="yes" required> I own this device/network or have explicit permission to test it.</label>
+{% elif tool == "logs" %}
+<label>Paste log excerpt<textarea name="logs" rows="9" required placeholder="Paste up to 500 lines of logs..."></textarea></label>
+{% endif %}
+<button class="btn primary">Run analysis <span>→</span></button>
+</form>
+</div>
+{% if result %}
+<div class="panel result-panel"><div class="eyebrow">ANALYSIS RESULT</div>
+{% if result.error %}<div class="flash danger">{{ result.error }}</div>
+{% else %}
+{% if result.label %}<h2>{{ result.label }} <span class="score">{{ result.score }}/6</span></h2><ul class="result-list">{% for item in result.checks %}<li>{{ item }}</li>{% endfor %}</ul>
+{% elif result.findings %}<h2>{{ result.verdict }}</h2><p><b>Hostname:</b> {{ result.hostname }} · <b>Scheme:</b> {{ result.scheme }}</p><ul class="result-list">{% for item in result.findings %}<li>{{ item }}</li>{% endfor %}</ul>
+{% elif result.records %}<h3>DNS records for {{ result.domain }}</h3>{% for kind, values in result.records.items() %}<div class="result-block"><b>{{ kind }}</b><ul>{% for item in values %}<li>{{ item }}</li>{% endfor %}</ul></div>{% endfor %}
+{% elif result.results %}<h3>TCP check: {{ result.host }}</h3><div class="table-wrap"><table><tr><th>PORT</th><th>RESULT</th></tr>{% for item in result.results %}<tr><td>{{ item.port }}</td><td>{{ item.status }}</td></tr>{% endfor %}</table></div>
+{% elif result.counts %}<h3>{{ result.lines_analyzed }} lines analyzed</h3>{% for kind, count in result.counts.items() %}<div class="result-block"><b>{{ kind }}: {{ count }}</b>{% if result.samples[kind] %}<ul>{% for item in result.samples[kind] %}<li><code>{{ item }}</code></li>{% endfor %}</ul>{% endif %}</div>{% endfor %}
+{% elif result["SHA-256"] %}{% for kind, value in result.items() if kind != "note" %}<div class="result-block"><b>{{ kind }}</b><code class="hash">{{ value }}</code></div>{% endfor %}
+{% else %}{% for kind, value in result.items() if kind != "note" %}<div class="result-block"><b>{{ kind|replace("_"," ")|title }}</b><p>{{ value }}</p></div>{% endfor %}{% endif %}
+{% if result.note %}<p class="notice">{{ result.note }}</p>{% endif %}
+{% endif %}</div>{% endif %}
+{% endblock %}

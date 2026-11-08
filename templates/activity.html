@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block content %}
+<div class="panel"><div class="eyebrow">AUDIT TRAIL</div><h2>Account activity</h2>
+{% if rows %}<div class="table-wrap"><table><tr><th>EVENT</th><th>DETAILS</th><th>TIME (UTC)</th></tr>{% for row in rows %}<tr><td>{{ row.event_type }}</td><td>{{ row.details }}</td><td>{{ row.created_at[:19].replace("T"," ") }}</td></tr>{% endfor %}</table></div>{% else %}<p class="muted">No activity found.</p>{% endif %}</div>
+{% endblock %}
