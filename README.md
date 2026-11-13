@@ -235,6 +235,48 @@ Areas of Interest:
 
 ---
 
+
+## System Architecture
+
+The following diagram illustrates the architecture and data flow of CyberSentinel SOC.
+
+```mermaid
+flowchart TB
+    U["SOC Analyst / Admin"]
+    UI["Web Interface<br/>HTML CSS JavaScript"]
+    FL["Flask Application<br/>app.py"]
+
+    subgraph AUTH["Authentication & Security"]
+        A["Login / Registration"]
+        B["Password Hashing"]
+        C["CSRF Protection"]
+        D["Rate Limiting & Session Control"]
+        E["Role-Based Access Control"]
+    end
+
+    subgraph SOC["SOC Modules"]
+        F["SOC Dashboard"]
+        G["Security Events"]
+        H["Incident Management"]
+        I["Threat Intelligence<br/>Offline Demo"]
+        J["Log Analyzer"]
+        K["File Integrity<br/>SHA-256"]
+        L["Network Lab<br/>CIDR Calculator"]
+        M["Reports & CSV Export"]
+        N["Admin Panel"]
+        O["Audit Trail"]
+    end
+
+    DB[("SQLite Database")]
+
+    U --> UI
+    UI --> FL
+    FL --> AUTH
+    AUTH --> SOC
+    SOC --> DB
+```
+
+
 ## Application Screenshots
 
 ### 1. SOC Dashboard
@@ -245,4 +287,3 @@ Areas of Interest:
 
 ### 3. Log Analyzer
 ![CyberSentinel Log Analyzer](screenshots/log-analyzer.png)
-
