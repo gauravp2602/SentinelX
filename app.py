@@ -210,6 +210,36 @@ def init_db():
 
 
 
+# ---------------------------------------------------------
+# AUTHENTICATION AND AUDIT HELPERS
+# ---------------------------------------------------------
+
+def login_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if "username" not in session:
+            return redirect(url_for("login"))
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def audit(action):
+    username = session.get("username")
+    if username:
+        with db() as con:
+            con.execute(
+                """
+                INSERT INTO audit(username, action, timestamp)
+                VALUES (?, ?, ?)
+                """,
+                (
+                    username,
+                    str(action)[:500],
+                    datetime.now().isoformat(timespec="seconds")
+                )
+            )
+
+
 # ADMIN ACCESS PROTECTION
 def admin_required(fn):
     @wraps(fn)
