@@ -63,13 +63,16 @@ def db():
 
 def init_db():
     with db() as con:
+
+        # Create all database tables
         con.executescript("""
         CREATE TABLE IF NOT EXISTS users(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'Analyst',
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            is_active INTEGER NOT NULL DEFAULT 1
         );
 
         CREATE TABLE IF NOT EXISTS events(
@@ -115,13 +118,28 @@ def init_db():
         );
         """)
 
-        # Seed an admin only if users table is empty and a password is configured.
+        # Migrate old users table if is_active column is missing
+        user_columns = {
+            row["name"]
+            for row in con.execute("PRAGMA table_info(users)").fetchall()
+        }
+
+        if "is_active" not in user_columns:
+            con.execute("""
+                ALTER TABLE users
+                ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1
+            """)
+
+        # Create admin account only when users table is empty
         if not con.execute("SELECT id FROM users LIMIT 1").fetchone():
             admin_password = os.environ.get("ADMIN_PASSWORD")
+
             if admin_password:
                 con.execute(
                     """
-                    INSERT INTO users(username, password_hash, role, created_at)
+                    INSERT INTO users(
+                        username, password_hash, role, created_at
+                    )
                     VALUES (?, ?, ?, ?)
                     """,
                     (
@@ -132,9 +150,10 @@ def init_db():
                     )
                 )
 
-        # Add sample events only when events table is empty.
+        # Add sample events only when events table is empty
         if not con.execute("SELECT id FROM events LIMIT 1").fetchone():
             now = datetime.now()
+
             samples = [
                 ("192.0.2.45", "Failed Login", "High",
                  "Multiple failed login attempts for demo-user"),
@@ -154,24 +173,29 @@ def init_db():
                 con.execute(
                     """
                     INSERT INTO events(
-                        timestamp, source_ip, event_type, severity, message, status
-                    ) VALUES (?, ?, ?, ?, ?, ?)
+                        timestamp, source_ip, event_type,
+                        severity, message, status
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        (now - timedelta(minutes=12 * i)).isoformat(timespec="seconds"),
+                        (now - timedelta(minutes=12 * i)).isoformat(
+                            timespec="seconds"
+                        ),
                         *item,
                         "Open"
                     )
                 )
 
-        # Add a sample incident only when incidents table is empty.
+        # Add sample incident only when incidents table is empty
         if not con.execute("SELECT id FROM incidents LIMIT 1").fetchone():
             con.execute(
                 """
                 INSERT INTO incidents(
                     title, severity, source_ip, description,
                     status, created_at, assigned_to
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     "Repeated authentication failures",
@@ -184,37 +208,6 @@ def init_db():
                 )
             )
 
-
-# ---------------------------------------------------------
-# Authentication, authorization and audit helpers
-# ---------------------------------------------------------
-
-
-def login_required(fn):
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        if "username" not in session:
-            return redirect(url_for("login"))
-
-        return fn(*args, **kwargs)
-
-    return wrapper
-
-
-def audit(action):
-    if session.get("username"):
-        with db() as con:
-            con.execute(
-                """
-                INSERT INTO audit(username, action, timestamp)
-                VALUES (?, ?, ?)
-                """,
-                (
-                    session["username"],
-                    action,
-                    datetime.now().isoformat(timespec="seconds")
-                )
-            )
 
 
 # ADMIN ACCESS PROTECTION
