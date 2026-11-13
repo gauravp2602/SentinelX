@@ -1,6 +1,6 @@
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    session, flash, jsonify, send_file
+    session, flash, jsonify, send_file, render_template_string
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -116,6 +116,30 @@ def init_db():
             failed_count INTEGER NOT NULL DEFAULT 0,
             locked_until REAL NOT NULL DEFAULT 0
         );
+
+        CREATE TABLE IF NOT EXISTS login_activity(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            ip_address TEXT NOT NULL,
+            status TEXT NOT NULL,
+            attempted_at TEXT NOT NULL,
+            user_agent TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS password_reset_tokens(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token_hash TEXT NOT NULL UNIQUE,
+            expires_at REAL NOT NULL,
+            used INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS app_settings(
+            setting_key TEXT PRIMARY KEY,
+            setting_value TEXT NOT NULL
+        );
         """)
 
         # Migrate old users table if is_active column is missing
@@ -130,25 +154,44 @@ def init_db():
                 ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1
             """)
 
-        # Create admin account only when users table is empty
-        if not con.execute("SELECT id FROM users LIMIT 1").fetchone():
-            admin_password = os.environ.get("ADMIN_PASSWORD")
+        # Project-owner admin bootstrap. Set ADMIN_PASSWORD temporarily in
+        # the hosting environment for the first setup or one-time reset.
+        # The one-time flag prevents the password being reset on every restart.
+        owner = con.execute(
+            "SELECT id FROM users WHERE LOWER(username) = 'gaurav'"
+        ).fetchone()
+        reset_done = con.execute(
+            "SELECT setting_value FROM app_settings WHERE setting_key = 'owner_password_bootstrap_done'"
+        ).fetchone()
+        bootstrap_password = os.environ.get("ADMIN_PASSWORD")
+        if bootstrap_password and len(bootstrap_password) < 12:
+            raise RuntimeError("ADMIN_PASSWORD must be at least 12 characters.")
 
-            if admin_password:
+        if not owner and bootstrap_password:
+            con.execute(
+                """INSERT INTO users(username, password_hash, role, created_at, is_active)
+                   VALUES (?, ?, 'Admin', ?, 1)""",
+                ("gaurav", generate_password_hash(bootstrap_password),
+                 datetime.now().isoformat(timespec="seconds"))
+            )
+            con.execute(
+                "INSERT OR REPLACE INTO app_settings(setting_key, setting_value) VALUES ('owner_password_bootstrap_done', '1')"
+            )
+        elif owner:
+            # Always enforce the owner role; never expose role selection at registration.
+            con.execute("UPDATE users SET role='Admin', is_active=1 WHERE id=?", (owner["id"],))
+            if bootstrap_password and not reset_done:
                 con.execute(
-                    """
-                    INSERT INTO users(
-                        username, password_hash, role, created_at
-                    )
-                    VALUES (?, ?, ?, ?)
-                    """,
-                    (
-                        "admin",
-                        generate_password_hash(admin_password),
-                        "Admin",
-                        datetime.now().isoformat(timespec="seconds")
-                    )
+                    "UPDATE users SET password_hash=? WHERE id=?",
+                    (generate_password_hash(bootstrap_password), owner["id"])
                 )
+                con.execute(
+                    "INSERT OR REPLACE INTO app_settings(setting_key, setting_value) VALUES ('owner_password_bootstrap_done', '1')"
+                )
+
+        # Ensure the project owner is the only Admin account. Other accounts
+        # remain Analysts; an admin may later promote users from the protected panel.
+        con.execute("UPDATE users SET role='Analyst' WHERE LOWER(username) != 'gaurav'")
 
         # Add sample events only when events table is empty
         if not con.execute("SELECT id FROM events LIMIT 1").fetchone():
@@ -238,6 +281,22 @@ def audit(action):
                     datetime.now().isoformat(timespec="seconds")
                 )
             )
+
+
+def record_login_activity(username, status):
+    """Store login metadata only; never store submitted passwords."""
+    with db() as con:
+        con.execute(
+            """INSERT INTO login_activity(username, ip_address, status, attempted_at, user_agent)
+               VALUES (?, ?, ?, ?, ?)""",
+            (
+                (username or "unknown")[:80],
+                request.remote_addr or "unknown",
+                status,
+                datetime.now().isoformat(timespec="seconds"),
+                request.headers.get("User-Agent", "")[:300]
+            )
+        )
 
 
 # ADMIN ACCESS PROTECTION
@@ -381,6 +440,7 @@ def login():
 
                 # CHECK ACCOUNT STATUS
                 if not user["is_active"]:
+                    record_login_activity(username, "Blocked - inactive account")
 
                     con.execute(
                         """
@@ -407,6 +467,7 @@ def login():
                     )
 
                 # SUCCESSFUL LOGIN
+                record_login_activity(user["username"], "Successful")
                 con.execute(
                     """
                     DELETE FROM login_attempts
@@ -437,6 +498,7 @@ def login():
                 return redirect(url_for("dashboard"))
 
             # FAILED LOGIN ATTEMPT
+            record_login_activity(username or "unknown", "Failed")
             if locked_until and now >= locked_until:
                 failed_count = 0
 
@@ -522,9 +584,11 @@ def register():
                 "Username must be between 3 and 80 characters.",
                 "danger"
             )
-        elif len(password) < 12:
+        elif username.lower() == "gaurav":
+            flash("This username is reserved for the project administrator.", "danger")
+        elif len(password) < 6:
             flash(
-                "Password must contain at least 12 characters.",
+                "Password must contain at least 6 characters.",
                 "danger"
             )
         elif password != confirm_password:
@@ -568,6 +632,73 @@ def register():
                 flash("That username already exists. Choose another.", "danger")
 
     return render_template("register.html")
+
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        generic_message = "If that account exists, a reset link has been generated."
+        with db() as con:
+            user = con.execute(
+                "SELECT id, username FROM users WHERE LOWER(username)=LOWER(?) AND is_active=1",
+                (username,)
+            ).fetchone()
+            if user:
+                raw_token = secrets.token_urlsafe(32)
+                token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+                expires = time.time() + 20 * 60
+                con.execute(
+                    "INSERT INTO password_reset_tokens(user_id, token_hash, expires_at, used, created_at) VALUES (?, ?, ?, 0, ?)",
+                    (user["id"], token_hash, expires,
+                     datetime.now().isoformat(timespec="seconds"))
+                )
+                reset_url = url_for("reset_password", token=raw_token, _external=True)
+                # Demo mode: print the one-time link to the server console.
+                # Configure email delivery before using this flow in production.
+                app.logger.warning("DEMO PASSWORD RESET LINK for %s: %s", user["username"], reset_url)
+        flash(generic_message + " Check the application server console (demo mode).", "info")
+        return redirect(url_for("forgot_password"))
+    return render_template_string(
+        """<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Forgot Password | CyberSentinel SOC</title><style>body{font-family:Arial,sans-serif;background:#0b1220;color:#e8eefc;display:grid;place-items:center;min-height:100vh;margin:0}.card{background:#151f33;padding:30px;border-radius:14px;width:min(90%,380px);box-sizing:border-box}input,button{width:100%;padding:12px;margin-top:12px;border-radius:8px;border:1px solid #34445f;box-sizing:border-box}button{background:#36a3ff;color:#06111f;font-weight:bold;cursor:pointer}a{color:#69bdff}small{color:#aab8ce}</style></head><body><div class='card'><h2>Forgot password</h2><p>Enter your username to generate a one-time reset link.</p>{% with messages=get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<p>{{ message }}</p>{% endfor %}{% endwith %}<form method='post'><input type='hidden' name='csrf_token' value='{{ csrf_token() }}'><input name='username' required minlength='3' placeholder='Username'><button type='submit'>Generate reset link</button></form><p><small>Demo mode: the link is printed in the application server console. Configure email delivery before production use.</small></p><a href='{{ url_for("login") }}'>Back to login</a></div></body></html>"""
+    )
+
+
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    with db() as con:
+        reset = con.execute(
+            """SELECT id, user_id FROM password_reset_tokens
+               WHERE token_hash=? AND used=0 AND expires_at>?""",
+            (token_hash, time.time())
+        ).fetchone()
+    if not reset:
+        flash("This password reset link is invalid or expired.", "danger")
+        return redirect(url_for("forgot_password"))
+
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        confirm = request.form.get("confirm_password", "")
+        if len(password) < 6:
+            flash("Password must contain at least 6 characters.", "danger")
+        elif password != confirm:
+            flash("Passwords do not match.", "danger")
+        else:
+            with db() as con:
+                con.execute(
+                    "UPDATE users SET password_hash=? WHERE id=?",
+                    (generate_password_hash(password), reset["user_id"])
+                )
+                con.execute(
+                    "UPDATE password_reset_tokens SET used=1 WHERE user_id=?",
+                    (reset["user_id"],)
+                )
+            flash("Password reset successful. Please log in.", "success")
+            return redirect(url_for("login"))
+    return render_template_string(
+        """<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Reset Password | CyberSentinel SOC</title><style>body{font-family:Arial,sans-serif;background:#0b1220;color:#e8eefc;display:grid;place-items:center;min-height:100vh;margin:0}.card{background:#151f33;padding:30px;border-radius:14px;width:min(90%,380px);box-sizing:border-box}input,button{width:100%;padding:12px;margin-top:12px;border-radius:8px;border:1px solid #34445f;box-sizing:border-box}button{background:#36a3ff;color:#06111f;font-weight:bold;cursor:pointer}</style></head><body><div class='card'><h2>Set new password</h2>{% with messages=get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<p>{{ message }}</p>{% endfor %}{% endwith %}<form method='post'><input type='hidden' name='csrf_token' value='{{ csrf_token() }}'><input type='password' name='password' minlength='6' required placeholder='New password'><input type='password' name='confirm_password' minlength='6' required placeholder='Confirm new password'><button type='submit'>Update password</button></form></div></body></html>"""
+    )
 
 
 @app.route("/logout", methods=["POST"])
@@ -614,13 +745,28 @@ def admin_panel():
             """
         ).fetchone()[0]
 
+        login_activity = con.execute(
+            "SELECT username, ip_address, status, attempted_at, user_agent "
+            "FROM login_activity ORDER BY id DESC LIMIT 100"
+        ).fetchall()
+
+        successful_logins = con.execute(
+            "SELECT COUNT(*) FROM login_activity WHERE status='Successful'"
+        ).fetchone()[0]
+        failed_logins = con.execute(
+            "SELECT COUNT(*) FROM login_activity WHERE status='Failed'"
+        ).fetchone()[0]
+
     return render_template(
         "admin.html",
         users=users,
         total_users=total_users,
         active_users=active_users,
         inactive_users=inactive_users,
-        admin_count=admin_count
+        admin_count=admin_count,
+        login_activity=login_activity,
+        successful_logins=successful_logins,
+        failed_logins=failed_logins
     )
 
 

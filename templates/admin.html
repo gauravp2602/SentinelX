@@ -10,18 +10,14 @@
     <div>
         <div class="eyebrow">SYSTEM CONTROL / ADMINISTRATION</div>
         <h1>User management<span class="accent">.</span></h1>
-        <p class="muted">
-            Manage registered users, account status and access roles.
-        </p>
+        <p class="muted">Manage registered users, account status and access roles.</p>
     </div>
-
     <a class="btn outline" href="{{ url_for('dashboard') }}">
         Back to overview ↗
     </a>
 </div>
 
 <!-- ADMIN STATISTICS -->
-
 <div class="stat-grid">
 
     <div class="stat-card">
@@ -31,34 +27,26 @@
     </div>
 
     <div class="stat-card">
-        <div class="stat-top">
-            ACTIVE USERS <span class="stat-icon">●</span>
-        </div>
+        <div class="stat-top">ACTIVE USERS</div>
         <div class="stat-value">{{ active_users }}</div>
         <div class="stat-foot">Accounts with access enabled</div>
     </div>
 
     <div class="stat-card">
-        <div class="stat-top">
-            INACTIVE USERS <span class="stat-icon red">●</span>
-        </div>
+        <div class="stat-top">INACTIVE USERS</div>
         <div class="stat-value">{{ inactive_users }}</div>
         <div class="stat-foot">Accounts with access disabled</div>
     </div>
 
     <div class="stat-card">
-        <div class="stat-top">
-            ACTIVE ADMINS <span class="stat-icon orange">◆</span>
-        </div>
+        <div class="stat-top">ACTIVE ADMINS</div>
         <div class="stat-value">{{ admin_count }}</div>
-        <div class="stat-foot">Privileged active accounts</div>
+        <div class="stat-foot">Privileged accounts</div>
     </div>
 
 </div>
 
-
-<!-- USER MANAGEMENT TABLE -->
-
+<!-- USER MANAGEMENT -->
 <div class="panel table-panel">
 
     <div class="panel-head">
@@ -66,14 +54,11 @@
             <div class="eyebrow">IDENTITY AND ACCESS MANAGEMENT</div>
             <h3>Registered users</h3>
         </div>
-
         <span class="tiny-tag green">ADMIN CONTROL</span>
     </div>
 
     <div class="table-scroll">
-
         <table>
-
             <thead>
                 <tr>
                     <th>ID</th>
@@ -87,18 +72,12 @@
             </thead>
 
             <tbody>
-
                 {% for user in users %}
-
                 <tr>
-
-                    <td class="mono">
-                        #{{ user.id }}
-                    </td>
+                    <td class="mono">#{{ user.id }}</td>
 
                     <td>
                         <b>{{ user.username }}</b>
-
                         {% if user.username == session.get('username') %}
                             <small class="muted">(You)</small>
                         {% endif %}
@@ -118,104 +97,151 @@
                         {% endif %}
                     </td>
 
-                    <td class="mono">
-                        {{ user.created_at }}
-                    </td>
+                    <td class="mono">{{ user.created_at }}</td>
 
                     <td>
-
                         {% if user.username != session.get('username') %}
-
                         <form method="POST"
                               action="{{ url_for('update_user_role', user_id=user.id) }}">
 
-                            <input type="hidden"
-                                   name="csrf_token"
+                            <input type="hidden" name="csrf_token"
                                    value="{{ csrf_token() }}">
 
                             <select name="role" required>
-
                                 <option value="Analyst"
                                     {% if user.role|lower == 'analyst' %}selected{% endif %}>
                                     Analyst
                                 </option>
-
                                 <option value="Admin"
                                     {% if user.role|lower == 'admin' %}selected{% endif %}>
                                     Admin
                                 </option>
-
                             </select>
 
-                            <button type="submit" class="btn outline">
-                                Update
-                            </button>
-
+                            <button type="submit" class="btn outline">Update</button>
                         </form>
-
                         {% else %}
                             <span class="muted">Protected</span>
                         {% endif %}
-
                     </td>
 
                     <td>
-
                         {% if user.username != session.get('username') %}
-
                         <form method="POST"
                               action="{{ url_for('toggle_user_status', user_id=user.id) }}"
-                              onsubmit="return confirm('Are you sure you want to change this account status?');">
+                              onsubmit="return confirm('Change this account status?');">
 
-                            <input type="hidden"
-                                   name="csrf_token"
+                            <input type="hidden" name="csrf_token"
                                    value="{{ csrf_token() }}">
 
                             {% if user.is_active %}
-
-                                <button type="submit" class="btn outline">
-                                    Deactivate
-                                </button>
-
+                                <button type="submit" class="btn outline">Deactivate</button>
                             {% else %}
-
-                                <button type="submit" class="btn primary">
-                                    Activate
-                                </button>
-
+                                <button type="submit" class="btn primary">Activate</button>
                             {% endif %}
-
                         </form>
-
                         {% else %}
                             <span class="muted">Protected</span>
                         {% endif %}
-
                     </td>
-
                 </tr>
 
                 {% else %}
-
                 <tr>
                     <td colspan="7">No registered users found.</td>
                 </tr>
-
                 {% endfor %}
-
             </tbody>
-
         </table>
+    </div>
+</div>
 
+<!-- LOGIN ACTIVITY STATISTICS -->
+<div class="page-heading">
+    <div>
+        <div class="eyebrow">SECURITY OPERATIONS / AUTHENTICATION</div>
+        <h1>Login Activity<span class="accent">.</span></h1>
+        <p class="muted">Monitor authentication attempts across the platform.</p>
+    </div>
+</div>
+
+<div class="stat-grid">
+
+    <div class="stat-card">
+        <div class="stat-top">SUCCESSFUL LOGINS</div>
+        <div class="stat-value">{{ successful_logins }}</div>
+        <div class="stat-foot">Successful authentication attempts</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-top">FAILED LOGINS</div>
+        <div class="stat-value">{{ failed_logins }}</div>
+        <div class="stat-foot">Failed authentication attempts</div>
     </div>
 
 </div>
 
+<!-- LOGIN ACTIVITY TABLE -->
+<div class="panel table-panel">
+
+    <div class="panel-head">
+        <div>
+            <div class="eyebrow">AUTHENTICATION MONITOR</div>
+            <h3>Recent login attempts</h3>
+        </div>
+        <span class="tiny-tag green">LATEST 100 RECORDS</span>
+    </div>
+
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>USERNAME</th>
+                    <th>IP ADDRESS</th>
+                    <th>LOGIN STATUS</th>
+                    <th>DATE & TIME</th>
+                    <th>USER AGENT</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for activity in login_activity %}
+                <tr>
+                    <td>
+                        <b>{{ activity.username }}</b>
+                    </td>
+
+                    <td class="mono">{{ activity.ip_address }}</td>
+
+                    <td>
+                        {% if activity.status == 'Successful' %}
+                            <span class="badge low">SUCCESS</span>
+                        {% else %}
+                            <span class="badge critical">FAILED</span>
+                        {% endif %}
+                    </td>
+
+                    <td class="mono">{{ activity.attempted_at }}</td>
+
+                    <td>
+                        <small class="muted">
+                            {{ activity.user_agent or 'Not available' }}
+                        </small>
+                    </td>
+                </tr>
+
+                {% else %}
+                <tr>
+                    <td colspan="5">No login activity recorded yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 
 <!-- SECURITY INFORMATION -->
-
 <div class="panel">
-
     <div class="eyebrow">ACCESS CONTROL POLICY</div>
     <h3>Administrative security</h3>
 
@@ -248,13 +274,12 @@
         <div>
             <span class="quick-icon">✓</span>
             <span>
-                <b>Audit monitoring</b>
-                <small>Administrative actions are recorded in the audit log.</small>
+                <b>Login monitoring</b>
+                <small>Successful and failed authentication attempts are recorded.</small>
             </span>
         </div>
 
     </div>
-
 </div>
 
 <div class="bottom-note">
