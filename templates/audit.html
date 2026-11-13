@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% block page_name %}Audit Trail{% endblock %}{% block content %}
+<div class="page-heading"><div><div class="eyebrow">ACCOUNTABILITY / 09</div><h1>Audit trail<span class="accent">.</span></h1><p class="muted">Recent user actions recorded by this local application.</p></div></div>
+<div class="panel table-panel"><div class="table-scroll"><table><thead><tr><th>ID</th><th>USER</th><th>ACTION</th><th>TIMESTAMP</th></tr></thead><tbody>{% for l in logs %}<tr><td class="mono">#{{ l.id }}</td><td>{{ l.username }}</td><td>{{ l.action }}</td><td class="mono">{{ l.timestamp }}</td></tr>{% else %}<tr><td colspan="4">No audit entries yet.</td></tr>{% endfor %}</tbody></table></div></div>{% endblock %}

@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% block page_name %}Error{% endblock %}{% block content %}<div class="empty-state error-state"><h1>{{ code }}</h1><p>{{ message }}</p><a class="btn outline" href="{{ url_for('dashboard') }}">Return to overview</a></div>{% endblock %}

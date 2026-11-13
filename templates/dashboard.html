@@ -1,0 +1,189 @@
+
+{% extends "base.html" %}
+
+{% block title %}Overview · CyberSentinel{% endblock %}
+{% block page_name %}Overview{% endblock %}
+
+{% block content %}
+
+<div class="page-heading">
+    <div>
+        <div class="eyebrow">MONITORING CENTER / 01</div>
+        <h1>Security overview<span class="accent">.</span></h1>
+        <p class="muted">
+            Your environment at a glance. Monitor events, investigate threats and manage incidents.
+        </p>
+    </div>
+    <a class="btn outline" href="{{ url_for('events') }}">View all events ↗</a>
+</div>
+
+<div class="stat-grid">
+
+    <div class="stat-card">
+        <div class="stat-top">TOTAL EVENTS <span class="stat-icon">⌁</span></div>
+        <div class="stat-value">{{ stats.total }}</div>
+        <div class="stat-foot">Recorded security telemetry</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-top">OPEN INCIDENTS <span class="stat-icon orange">◈</span></div>
+        <div class="stat-value">{{ stats.open_incidents }}</div>
+        <div class="stat-foot">Require analyst attention</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-top">CRITICAL ALERTS <span class="stat-icon red">⚑</span></div>
+        <div class="stat-value">{{ stats.critical }}</div>
+        <div class="stat-foot">Critical severity events</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-top">HIGH PRIORITY <span class="stat-icon yellow">▲</span></div>
+        <div class="stat-value">{{ stats.high }}</div>
+        <div class="stat-foot">High severity events</div>
+    </div>
+
+</div>
+
+<div class="two-col">
+
+    <div class="panel">
+        <div class="panel-head">
+            <div>
+                <div class="eyebrow">EVENT DISTRIBUTION</div>
+                <h3>Threat landscape</h3>
+            </div>
+            <span class="tiny-tag">ALL TIME</span>
+        </div>
+
+        <div class="chart-wrap">
+            <canvas id="severityChart"></canvas>
+        </div>
+
+        <div class="legend-row">
+            <span><i class="dot critical"></i>Critical {{ stats.critical }}</span>
+            <span><i class="dot high"></i>High {{ stats.high }}</span>
+            <span><i class="dot medium"></i>Medium {{ stats.medium }}</span>
+            <span><i class="dot low"></i>Low {{ stats.low }}</span>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-head">
+            <div>
+                <div class="eyebrow">QUICK ACTIONS</div>
+                <h3>Investigation tools</h3>
+            </div>
+            <span class="tiny-tag green">READY</span>
+        </div>
+
+        <div class="quick-list">
+
+            <a href="{{ url_for('log_analyzer') }}">
+                <span class="quick-icon">≋</span>
+                <span>
+                    <b>Analyze security logs</b>
+                    <small>Find suspicious patterns in pasted logs</small>
+                </span>
+                <strong>→</strong>
+            </a>
+
+            <a href="{{ url_for('threat_intel') }}">
+                <span class="quick-icon">◎</span>
+                <span>
+                    <b>Investigate an IP</b>
+                    <small>Check local demo threat indicators</small>
+                </span>
+                <strong>→</strong>
+            </a>
+
+            <a href="{{ url_for('file_integrity') }}">
+                <span class="quick-icon">⌗</span>
+                <span>
+                    <b>Verify file integrity</b>
+                    <small>Build and update SHA-256 baselines</small>
+                </span>
+                <strong>→</strong>
+            </a>
+
+            <a href="{{ url_for('network_lab') }}">
+                <span class="quick-icon">⌘</span>
+                <span>
+                    <b>Network lab</b>
+                    <small>Private subnet calculator</small>
+                </span>
+                <strong>→</strong>
+            </a>
+
+        </div>
+    </div>
+
+</div>
+
+<div class="panel table-panel">
+
+    <div class="panel-head">
+        <div>
+            <div class="eyebrow">LIVE TELEMETRY FEED</div>
+            <h3>Recent security events</h3>
+        </div>
+        <a class="text-link" href="{{ url_for('events') }}">View event log →</a>
+    </div>
+
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>TIME</th>
+                    <th>SOURCE IP</th>
+                    <th>EVENT</th>
+                    <th>SEVERITY</th>
+                    <th>STATUS</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for e in events %}
+                <tr>
+                    <td class="mono">{{ e.timestamp[11:19] }}</td>
+                    <td class="mono">{{ e.source_ip }}</td>
+                    <td>{{ e.event_type }}</td>
+                    <td>
+                        <span class="badge {{ e.severity|lower }}">
+                            {{ e.severity }}
+                        </span>
+                    </td>
+                    <td><span class="status">{{ e.status }}</span></td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5">No events yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<div class="bottom-note">
+    <span class="online-dot"></span>
+    Demo telemetry is preloaded. Add your own sample logs to test the analysis workflow.
+    <span class="mono">ENV: LOCAL</span>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const sevData = {{ [
+        stats.critical,
+        stats.high,
+        stats.medium,
+        stats.low,
+        stats.info
+    ] | tojson }};
+</script>
+
+<script src="{{ url_for('static',filename='js/dashboard.js') }}"></script>
+{% endblock %}

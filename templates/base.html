@@ -1,0 +1,201 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>{% block title %}CyberSentinel SOC{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static',filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+<div class="app-shell">
+
+    <aside class="sidebar">
+
+        <a class="brand" href="{{ url_for('dashboard') }}">
+            <span class="brand-mark">CS</span>
+            <span>
+                CYBER<span class="brand-light">SENTINEL</span>
+                <small>SECURITY OPERATIONS</small>
+            </span>
+        </a>
+
+        <div class="side-label">WORKSPACE</div>
+
+        <nav>
+
+            <a href="{{ url_for('dashboard') }}"
+               class="{% if request.endpoint=='dashboard' %}active{% endif %}">
+                <b>◫</b> Overview
+            </a>
+
+            <a href="{{ url_for('events') }}"
+               class="{% if request.endpoint=='events' %}active{% endif %}">
+                <b>⌁</b> Security Events
+            </a>
+
+            <a href="{{ url_for('incidents') }}"
+               class="{% if request.endpoint in ['incidents','incident_status'] %}active{% endif %}">
+                <b>◈</b> Incidents
+            </a>
+
+            <a href="{{ url_for('threat_intel') }}"
+               class="{% if request.endpoint=='threat_intel' %}active{% endif %}">
+                <b>◎</b> Threat Intelligence
+            </a>
+
+            <a href="{{ url_for('log_analyzer') }}"
+               class="{% if request.endpoint=='log_analyzer' %}active{% endif %}">
+                <b>≋</b> Log Analyzer
+            </a>
+
+            <a href="{{ url_for('file_integrity') }}"
+               class="{% if request.endpoint=='file_integrity' %}active{% endif %}">
+                <b>⌗</b> File Integrity
+            </a>
+
+            <a href="{{ url_for('network_lab') }}"
+               class="{% if request.endpoint=='network_lab' %}active{% endif %}">
+                <b>⌘</b> Network Lab
+            </a>
+
+            <div class="side-label second">MANAGEMENT</div>
+
+            <a href="{{ url_for('reports') }}"
+               class="{% if request.endpoint=='reports' %}active{% endif %}">
+                <b>▤</b> Reports
+            </a>
+
+            <a href="{{ url_for('audit_logs') }}"
+               class="{% if request.endpoint=='audit_logs' %}active{% endif %}">
+                <b>◷</b> Audit Trail
+            </a>
+
+            <!-- ADMIN PANEL: ADMIN ONLY -->
+
+            {% if session.get('role', '').lower() == 'admin' %}
+
+            <a href="{{ url_for('admin_panel') }}"
+               class="{% if request.endpoint in ['admin_panel', 'toggle_user_status', 'update_user_role'] %}active{% endif %}">
+                <b>⚙</b> Admin Panel
+            </a>
+
+            {% endif %}
+
+        </nav>
+
+        <div class="sidebar-bottom">
+
+            <div class="online-dot"></div>
+            <span>LOCAL LAB ENVIRONMENT</span>
+
+            <div class="side-user">
+
+                <div class="avatar">
+                    {{ session.get('username','U')[0]|upper }}
+                </div>
+
+                <div>
+                    <strong>{{ session.get('username','User') }}</strong>
+                    <small>{{ session.get('role','Analyst') }}</small>
+                </div>
+
+                <!-- SECURE POST LOGOUT -->
+
+                <form method="POST"
+                      action="{{ url_for('logout') }}"
+                      style="display:inline;">
+
+                    <input type="hidden"
+                           name="csrf_token"
+                           value="{{ csrf_token() }}">
+
+                    <button type="submit"
+                            title="Logout"
+                            aria-label="Logout"
+                            style="background:none;border:none;color:inherit;cursor:pointer;font-size:18px;">
+                        ↗
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </aside>
+
+    <main class="main">
+
+        <header class="topbar">
+
+            <div>
+                <span class="breadcrumb">SECURITY OPERATIONS /</span>
+                <strong>{% block page_name %}Overview{% endblock %}</strong>
+            </div>
+
+            <div class="top-right">
+
+                <span class="live-pill">
+                    <i></i> SYSTEM ONLINE
+                </span>
+
+                <span class="top-date" id="clock"></span>
+
+            </div>
+
+        </header>
+
+        <section class="content">
+
+            <!-- FLASH MESSAGES -->
+
+            {% with messages=get_flashed_messages(with_categories=true) %}
+
+                {% if messages %}
+
+                    {% for category,message in messages %}
+
+                        <div class="flash {{ category }}">
+                            {{ message }}
+                        </div>
+
+                    {% endfor %}
+
+                {% endif %}
+
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+
+        </section>
+
+        <footer>
+
+            CYBERSENTINEL SOC
+            <span>•</span>
+            LOCAL DEMONSTRATION BUILD
+
+            <span class="footer-right">
+                SECURE BY DESIGN / EDUCATIONAL USE
+            </span>
+
+        </footer>
+
+    </main>
+
+</div>
+
+<script src="{{ url_for('static',filename='js/app.js') }}"></script>
+
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

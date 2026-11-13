@@ -1,0 +1,40 @@
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Database
+# Ignore all SQLite databases
+*.db
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# Monitored demo files
+monitored_files/*
+!monitored_files/.gitkeep
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# IDE and operating system
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporary and backup files
+*.tmp
+*.bak

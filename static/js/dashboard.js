@@ -1,0 +1,2 @@
+const ctx=document.getElementById("severityChart");
+if(ctx && window.Chart){new Chart(ctx,{type:"doughnut",data:{labels:["Critical","High","Medium","Low","Info"],datasets:[{data:sevData,backgroundColor:["#ff5364","#ff9c50","#f4c15d","#39c9a2","#6c8cff"],borderWidth:0,hoverOffset:7}]},options:{responsive:true,maintainAspectRatio:false,cutout:"72%",plugins:{legend:{display:false},tooltip:{backgroundColor:"#101d2d",padding:12}}}});}

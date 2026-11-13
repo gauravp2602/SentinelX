@@ -1,0 +1,266 @@
+
+{% extends "base.html" %}
+
+{% block title %}Admin Panel · CyberSentinel{% endblock %}
+{% block page_name %}Admin Panel{% endblock %}
+
+{% block content %}
+
+<div class="page-heading">
+    <div>
+        <div class="eyebrow">SYSTEM CONTROL / ADMINISTRATION</div>
+        <h1>User management<span class="accent">.</span></h1>
+        <p class="muted">
+            Manage registered users, account status and access roles.
+        </p>
+    </div>
+
+    <a class="btn outline" href="{{ url_for('dashboard') }}">
+        Back to overview ↗
+    </a>
+</div>
+
+<!-- ADMIN STATISTICS -->
+
+<div class="stat-grid">
+
+    <div class="stat-card">
+        <div class="stat-top">TOTAL USERS</div>
+        <div class="stat-value">{{ total_users }}</div>
+        <div class="stat-foot">Registered accounts</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-top">
+            ACTIVE USERS <span class="stat-icon">●</span>
+        </div>
+        <div class="stat-value">{{ active_users }}</div>
+        <div class="stat-foot">Accounts with access enabled</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-top">
+            INACTIVE USERS <span class="stat-icon red">●</span>
+        </div>
+        <div class="stat-value">{{ inactive_users }}</div>
+        <div class="stat-foot">Accounts with access disabled</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-top">
+            ACTIVE ADMINS <span class="stat-icon orange">◆</span>
+        </div>
+        <div class="stat-value">{{ admin_count }}</div>
+        <div class="stat-foot">Privileged active accounts</div>
+    </div>
+
+</div>
+
+
+<!-- USER MANAGEMENT TABLE -->
+
+<div class="panel table-panel">
+
+    <div class="panel-head">
+        <div>
+            <div class="eyebrow">IDENTITY AND ACCESS MANAGEMENT</div>
+            <h3>Registered users</h3>
+        </div>
+
+        <span class="tiny-tag green">ADMIN CONTROL</span>
+    </div>
+
+    <div class="table-scroll">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>USERNAME</th>
+                    <th>ROLE</th>
+                    <th>STATUS</th>
+                    <th>CREATED AT</th>
+                    <th>UPDATE ROLE</th>
+                    <th>ACCOUNT ACTION</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for user in users %}
+
+                <tr>
+
+                    <td class="mono">
+                        #{{ user.id }}
+                    </td>
+
+                    <td>
+                        <b>{{ user.username }}</b>
+
+                        {% if user.username == session.get('username') %}
+                            <small class="muted">(You)</small>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <span class="badge {{ 'critical' if user.role|lower == 'admin' else 'info' }}">
+                            {{ user.role }}
+                        </span>
+                    </td>
+
+                    <td>
+                        {% if user.is_active %}
+                            <span class="badge low">ACTIVE</span>
+                        {% else %}
+                            <span class="badge critical">INACTIVE</span>
+                        {% endif %}
+                    </td>
+
+                    <td class="mono">
+                        {{ user.created_at }}
+                    </td>
+
+                    <td>
+
+                        {% if user.username != session.get('username') %}
+
+                        <form method="POST"
+                              action="{{ url_for('update_user_role', user_id=user.id) }}">
+
+                            <input type="hidden"
+                                   name="csrf_token"
+                                   value="{{ csrf_token() }}">
+
+                            <select name="role" required>
+
+                                <option value="Analyst"
+                                    {% if user.role|lower == 'analyst' %}selected{% endif %}>
+                                    Analyst
+                                </option>
+
+                                <option value="Admin"
+                                    {% if user.role|lower == 'admin' %}selected{% endif %}>
+                                    Admin
+                                </option>
+
+                            </select>
+
+                            <button type="submit" class="btn outline">
+                                Update
+                            </button>
+
+                        </form>
+
+                        {% else %}
+                            <span class="muted">Protected</span>
+                        {% endif %}
+
+                    </td>
+
+                    <td>
+
+                        {% if user.username != session.get('username') %}
+
+                        <form method="POST"
+                              action="{{ url_for('toggle_user_status', user_id=user.id) }}"
+                              onsubmit="return confirm('Are you sure you want to change this account status?');">
+
+                            <input type="hidden"
+                                   name="csrf_token"
+                                   value="{{ csrf_token() }}">
+
+                            {% if user.is_active %}
+
+                                <button type="submit" class="btn outline">
+                                    Deactivate
+                                </button>
+
+                            {% else %}
+
+                                <button type="submit" class="btn primary">
+                                    Activate
+                                </button>
+
+                            {% endif %}
+
+                        </form>
+
+                        {% else %}
+                            <span class="muted">Protected</span>
+                        {% endif %}
+
+                    </td>
+
+                </tr>
+
+                {% else %}
+
+                <tr>
+                    <td colspan="7">No registered users found.</td>
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+
+<!-- SECURITY INFORMATION -->
+
+<div class="panel">
+
+    <div class="eyebrow">ACCESS CONTROL POLICY</div>
+    <h3>Administrative security</h3>
+
+    <div class="quick-list">
+
+        <div>
+            <span class="quick-icon">✓</span>
+            <span>
+                <b>Admin-only access</b>
+                <small>Only authorized administrators can manage users.</small>
+            </span>
+        </div>
+
+        <div>
+            <span class="quick-icon">✓</span>
+            <span>
+                <b>Self-protection</b>
+                <small>Administrators cannot change their own role or deactivate themselves.</small>
+            </span>
+        </div>
+
+        <div>
+            <span class="quick-icon">✓</span>
+            <span>
+                <b>Account status control</b>
+                <small>Inactive accounts cannot sign in.</small>
+            </span>
+        </div>
+
+        <div>
+            <span class="quick-icon">✓</span>
+            <span>
+                <b>Audit monitoring</b>
+                <small>Administrative actions are recorded in the audit log.</small>
+            </span>
+        </div>
+
+    </div>
+
+</div>
+
+<div class="bottom-note">
+    <span class="online-dot"></span>
+    ADMINISTRATIVE CONTROL ACTIVE
+    <span class="mono">ENV: LOCAL</span>
+</div>
+
+{% endblock %}
