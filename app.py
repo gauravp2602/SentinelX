@@ -22,7 +22,12 @@ import ipaddress
 # ---------------------------------------------------------
 
 APP_DIR = Path(__file__).resolve().parent
-DB_PATH = APP_DIR / "data" / "cybersentinel.db"
+DB_PATH = Path(
+    os.environ.get(
+        "DATABASE_PATH",
+        str(APP_DIR / "data" / "cybersentinel.db")
+    )
+)
 LOG_DIR = APP_DIR / "logs"
 MONITOR_DIR = APP_DIR / "monitored_files"
 
@@ -34,7 +39,10 @@ app = Flask(__name__)
 
 # Configure a stable SECRET_KEY in the Windows environment.
 # The fallback is for local development only; sessions reset on restart.
-app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+
+if not app.config["SECRET_KEY"]:
+    raise RuntimeError("SECRET_KEY environment variable is required.")
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=15)
