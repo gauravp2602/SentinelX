@@ -231,3 +231,18 @@ Areas of Interest:
 **Type:** Educational Cybersecurity Portfolio Project  
 **Backend:** Python + Flask  
 **Database:** SQLite
+
+
+---
+
+## Application Screenshots
+
+### 1. SOC Dashboard
+![CyberSentinel SOC Dashboard](screenshots/dashboard.png)
+
+### 2. Admin Panel
+![CyberSentinel Admin Panel](screenshots/admin-panel.png)
+
+### 3. Log Analyzer
+![CyberSentinel Log Analyzer](screenshots/log-analyzer.png)
+
