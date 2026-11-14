@@ -1,5 +1,284 @@
-{% extends "base.html" %}{% block page_name %}Threat Intelligence{% endblock %}{% block content %}
-<div class="page-heading"><div><div class="eyebrow">THREAT CONTEXT / 04</div><h1>Threat intelligence<span class="accent">.</span></h1><p class="muted">Investigate an IP against the built-in offline demonstration indicators.</p></div><span class="tiny-tag yellow">OFFLINE FEED</span></div>
-<div class="two-col"><div class="panel"><div class="eyebrow">INDICATOR LOOKUP</div><h3>IP reputation check</h3><p class="muted">Enter an IPv4 or IPv6 address. No external request is made.</p><form method="post" class="stack-form">
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>IP ADDRESS</label><input name="ip" placeholder="203.0.113.77" required><button class="btn primary">Investigate indicator →</button></form>{% if result %}<div class="result-card {% if result.risk=='High' %}risk-high{% endif %}">{% if result.valid %}<div class="result-label">LOOKUP RESULT</div><h2>{{ result.ip }}</h2><div class="result-class">{{ result.classification }}</div><p>Risk level: <b>{{ result.risk }}</b></p>{% else %}<p>{{ result.note }}</p>{% endif %}<small>{{ result.note }}</small></div>{% endif %}</div>
-<div class="panel"><div class="eyebrow">LOCAL INDICATOR SET</div><h3>Demo feed entries</h3><div class="indicator-list"><div><span class="mono">203.0.113.77</span><span class="badge critical">Critical demo</span></div><div><span class="mono">198.51.100.66</span><span class="badge high">High demo</span></div><div><span class="mono">192.0.2.0/24</span><span class="badge info">Documentation range</span></div></div><div class="callout">These are RFC documentation IP ranges reserved for examples. They are not real-world threat intelligence indicators.</div></div></div>{% endblock %}
+
+{% extends "base.html" %}
+
+{% block title %}Threat Intelligence · CyberSentinel{% endblock %}
+{% block page_name %}Threat Intelligence{% endblock %}
+
+{% block content %}
+
+<!-- HEADER -->
+<div class="soc-heading">
+    <div>
+        <div class="eyebrow">THREAT CONTEXT / 04</div>
+        <h1>Threat Intelligence<span class="accent">.</span></h1>
+        <p class="muted">
+            Investigate IP indicators and evaluate their risk classification.
+        </p>
+    </div>
+
+    <div class="soc-heading-actions">
+        <span class="tiny-tag yellow">OFFLINE DEMO FEED</span>
+    </div>
+</div>
+
+<!-- STATUS CARDS -->
+<div class="event-summary-grid threat-summary-grid">
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon blue">⌕</span>
+        <div>
+            <small>LOOKUP ENGINE</small>
+            <strong>LOCAL</strong>
+        </div>
+    </div>
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon red">⚑</span>
+        <div>
+            <small>CRITICAL INDICATORS</small>
+            <strong>01</strong>
+        </div>
+    </div>
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon orange">▲</span>
+        <div>
+            <small>HIGH RISK INDICATORS</small>
+            <strong>01</strong>
+        </div>
+    </div>
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon green">✓</span>
+        <div>
+            <small>EXTERNAL REQUESTS</small>
+            <strong>ZERO</strong>
+        </div>
+    </div>
+
+</div>
+
+<!-- MAIN INVESTIGATION AREA -->
+<div class="threat-main-grid">
+
+    <!-- IP LOOKUP -->
+    <div class="panel threat-lookup-panel">
+
+        <div class="panel-head">
+            <div>
+                <div class="eyebrow">INDICATOR ANALYSIS / 01</div>
+                <h3>IP Reputation Investigation</h3>
+            </div>
+
+            <span class="event-summary-icon orange">⌕</span>
+        </div>
+
+        <p class="muted threat-description">
+            Submit an IPv4 or IPv6 address to check its classification
+            against the locally configured demonstration indicators.
+        </p>
+
+        <form method="post" class="stack-form threat-lookup-form">
+
+            <input type="hidden" name="csrf_token"
+                   value="{{ csrf_token() }}">
+
+            <label for="threatIP">TARGET IP ADDRESS</label>
+
+            <input
+                type="text"
+                id="threatIP"
+                name="ip"
+                placeholder="Example: 203.0.113.77"
+                value="{{ result.ip if result and result.ip else '' }}"
+                required
+                autocomplete="off"
+            >
+
+            <button type="submit" class="btn primary threat-submit">
+                Investigate Indicator →
+            </button>
+
+        </form>
+
+        {% if result %}
+
+        <div class="result-card threat-result
+            {% if result.risk == 'High' %}risk-high{% endif %}
+            {% if result.risk == 'Critical' %}risk-critical{% endif %}">
+
+            {% if result.valid %}
+
+            <div class="result-label">INVESTIGATION RESULT</div>
+
+            <div class="threat-result-heading">
+                <h2>{{ result.ip }}</h2>
+                <span class="badge {{ result.risk|lower }}">
+                    {{ result.risk }}
+                </span>
+            </div>
+
+            <div class="result-class">
+                {{ result.classification }}
+            </div>
+
+            <div class="threat-result-details">
+                <div>
+                    <small>RISK LEVEL</small>
+                    <strong>{{ result.risk }}</strong>
+                </div>
+
+                <div>
+                    <small>VALIDATION</small>
+                    <strong>Valid IP</strong>
+                </div>
+
+                <div>
+                    <small>DATA SOURCE</small>
+                    <strong>Offline Feed</strong>
+                </div>
+            </div>
+
+            {% else %}
+
+            <div class="result-label">LOOKUP INFORMATION</div>
+            <p>{{ result.note }}</p>
+
+            {% endif %}
+
+            <small class="threat-result-note">
+                {{ result.note }}
+            </small>
+
+        </div>
+
+        {% else %}
+
+        <div class="threat-empty-state">
+            <div class="threat-empty-icon">⌕</div>
+            <strong>Awaiting IP investigation</strong>
+            <p>
+                Enter an IP address above to view its local
+                demonstration-feed classification.
+            </p>
+        </div>
+
+        {% endif %}
+
+    </div>
+
+    <!-- INDICATOR FEED -->
+    <div class="panel threat-feed-panel">
+
+        <div class="panel-head">
+            <div>
+                <div class="eyebrow">LOCAL INTELLIGENCE / 02</div>
+                <h3>Demo Indicator Feed</h3>
+            </div>
+
+            <span class="tiny-tag yellow">STATIC DATA</span>
+        </div>
+
+        <p class="muted threat-description">
+            Built-in sample indicators used for demonstrating
+            IP classification.
+        </p>
+
+        <div class="threat-indicator-list">
+
+            <div class="threat-indicator">
+                <div class="threat-indicator-info">
+                    <span class="threat-indicator-dot critical"></span>
+                    <div>
+                        <strong>203.0.113.77</strong>
+                        <small>Critical demo indicator</small>
+                    </div>
+                </div>
+                <span class="badge critical">Critical</span>
+            </div>
+
+            <div class="threat-indicator">
+                <div class="threat-indicator-info">
+                    <span class="threat-indicator-dot high"></span>
+                    <div>
+                        <strong>198.51.100.66</strong>
+                        <small>High demo indicator</small>
+                    </div>
+                </div>
+                <span class="badge high">High</span>
+            </div>
+
+            <div class="threat-indicator">
+                <div class="threat-indicator-info">
+                    <span class="threat-indicator-dot info"></span>
+                    <div>
+                        <strong>192.0.2.0/24</strong>
+                        <small>Documentation network</small>
+                    </div>
+                </div>
+                <span class="badge info">Info</span>
+            </div>
+
+        </div>
+
+        <div class="callout threat-feed-warning">
+            <strong>ⓘ Demo feed limitation</strong>
+            <p>
+                These addresses belong to RFC documentation ranges
+                reserved for examples. They are not real-world
+                malicious IP addresses or live threat intelligence.
+            </p>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- INVESTIGATION GUIDE -->
+<div class="panel threat-guide-panel">
+
+    <div class="panel-head">
+        <div>
+            <div class="eyebrow">ANALYST REFERENCE / 03</div>
+            <h3>IP Investigation Workflow</h3>
+        </div>
+        <span class="tiny-tag green">ANALYST GUIDE</span>
+    </div>
+
+    <div class="threat-guide-grid">
+
+        <div class="threat-guide-item">
+            <span>01</span>
+            <strong>Collect</strong>
+            <p>Identify the source IP from logs or security alerts.</p>
+        </div>
+
+        <div class="threat-guide-item">
+            <span>02</span>
+            <strong>Validate</strong>
+            <p>Check the IP format and indicator classification.</p>
+        </div>
+
+        <div class="threat-guide-item">
+            <span>03</span>
+            <strong>Assess</strong>
+            <p>Review the risk level and available investigation context.</p>
+        </div>
+
+        <div class="threat-guide-item">
+            <span>04</span>
+            <strong>Document</strong>
+            <p>Record findings and escalate according to policy.</p>
+        </div>
+
+    </div>
+
+</div>
+
+<div class="bottom-note">
+    <span class="online-dot"></span>
+    Threat intelligence investigation interface
+    <span class="mono">OFFLINE DEMO ENVIRONMENT</span>
+</div>
+
+{% endblock %}

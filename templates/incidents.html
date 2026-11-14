@@ -1,7 +1,509 @@
-{% extends "base.html" %}{% block page_name %}Incident Management{% endblock %}{% block content %}
-<div class="page-heading"><div><div class="eyebrow">RESPONSE / 03</div><h1>Incident management<span class="accent">.</span></h1><p class="muted">Track investigations from initial triage through closure.</p></div></div>
-<div class="two-col incident-layout"><div class="panel"><div class="eyebrow">NEW CASE</div><h3>Create incident</h3><form method="post" class="form-grid">
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>INCIDENT TITLE<input name="title" required placeholder="e.g. Suspicious login activity"></label><label>SEVERITY<select name="severity"><option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option></select></label><label>SOURCE IP<input name="source_ip" placeholder="192.168.1.10"></label><label>DESCRIPTION<textarea name="description" rows="4" placeholder="Add investigation notes..."></textarea></label><button class="btn primary">Create incident +</button></form></div>
-<div class="panel"><div class="eyebrow">RESPONSE WORKFLOW</div><h3>Analyst checklist</h3><div class="checklist"><p><b>01</b><span><strong>Identify</strong><small>Review alert source, time and severity.</small></span></p><p><b>02</b><span><strong>Contain</strong><small>Follow your organization's approved playbook.</small></span></p><p><b>03</b><span><strong>Eradicate & recover</strong><small>Coordinate remediation with system owners.</small></span></p><p><b>04</b><span><strong>Document</strong><small>Record evidence, decisions and closure notes.</small></span></p></div></div></div>
-<div class="panel table-panel"><div class="panel-head"><div><div class="eyebrow">CASE REGISTER</div><h3>Tracked incidents</h3></div></div><div class="table-scroll"><table><thead><tr><th>CASE</th><th>TITLE</th><th>SEVERITY</th><th>SOURCE IP</th><th>ASSIGNED</th><th>CREATED</th><th>STATUS</th><th>UPDATE</th></tr></thead><tbody>{% for i in incidents %}<tr><td class="mono">#{{ i.id }}</td><td>{{ i.title }}</td><td><span class="badge {{ i.severity|lower }}">{{ i.severity }}</span></td><td class="mono">{{ i.source_ip or '—' }}</td><td>{{ i.assigned_to or '—' }}</td><td class="mono">{{ i.created_at[:16] }}</td><td>{{ i.status }}</td><td><form method="post" action="{{ url_for('incident_status',incident_id=i.id) }}" class="status-form">
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><select name="status"><option {% if i.status=='Open' %}selected{% endif %}>Open</option><option {% if i.status=='Investigating' %}selected{% endif %}>Investigating</option><option {% if i.status=='Closed' %}selected{% endif %}>Closed</option></select><button class="mini-btn">Save</button></form></td></tr>{% else %}<tr><td colspan="8">No incidents.</td></tr>{% endfor %}</tbody></table></div></div>{% endblock %}
+
+{% extends "base.html" %}
+
+{% block title %}Incident Management · CyberSentinel{% endblock %}
+{% block page_name %}Incident Management{% endblock %}
+
+{% block content %}
+
+<!-- PAGE HEADER -->
+<div class="soc-heading">
+    <div>
+        <div class="eyebrow">INCIDENT RESPONSE / 03</div>
+        <h1>Incident Management<span class="accent">.</span></h1>
+        <p class="muted">
+            Track investigations, coordinate response and manage security cases.
+        </p>
+    </div>
+
+    <div class="soc-heading-actions">
+        <span class="tiny-tag green">
+            <i class="online-dot"></i> RESPONSE CENTER
+        </span>
+    </div>
+</div>
+
+<!-- INCIDENT SUMMARY -->
+<div class="event-summary-grid incident-summary-grid">
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon blue">▦</span>
+        <div>
+            <small>TOTAL INCIDENTS</small>
+            <strong id="incidentTotal">0</strong>
+        </div>
+    </div>
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon red">⚑</span>
+        <div>
+            <small>CRITICAL CASES</small>
+            <strong id="incidentCritical">0</strong>
+        </div>
+    </div>
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon orange">◷</span>
+        <div>
+            <small>ACTIVE CASES</small>
+            <strong id="incidentActive">0</strong>
+        </div>
+    </div>
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon green">✓</span>
+        <div>
+            <small>CLOSED CASES</small>
+            <strong id="incidentClosed">0</strong>
+        </div>
+    </div>
+
+</div>
+
+<!-- CREATE INCIDENT + RESPONSE WORKFLOW -->
+<div class="two-col incident-layout soc-incident-layout">
+
+    <!-- CREATE FORM -->
+    <div class="panel incident-create-panel">
+
+        <div class="panel-head">
+            <div>
+                <div class="eyebrow">CASE REGISTRATION</div>
+                <h3>Create New Incident</h3>
+            </div>
+            <span class="event-summary-icon orange">+</span>
+        </div>
+
+        <p class="muted incident-form-intro">
+            Record a security incident for investigation and response.
+        </p>
+
+        <form method="post" class="form-grid incident-create-form">
+
+            <input type="hidden" name="csrf_token"
+                   value="{{ csrf_token() }}">
+
+            <label>
+                INCIDENT TITLE
+                <input
+                    name="title"
+                    required
+                    placeholder="e.g. Suspicious login activity"
+                >
+            </label>
+
+            <label>
+                SEVERITY LEVEL
+                <select name="severity">
+                    <option>Critical</option>
+                    <option>High</option>
+                    <option selected>Medium</option>
+                    <option>Low</option>
+                </select>
+            </label>
+
+            <label>
+                SOURCE IP ADDRESS
+                <input
+                    name="source_ip"
+                    placeholder="192.168.1.10"
+                >
+            </label>
+
+            <label>
+                INVESTIGATION DESCRIPTION
+                <textarea
+                    name="description"
+                    rows="4"
+                    placeholder="Describe the incident and add investigation notes..."
+                ></textarea>
+            </label>
+
+            <button type="submit" class="btn primary incident-create-button">
+                Create Incident +
+            </button>
+
+        </form>
+
+    </div>
+
+    <!-- RESPONSE WORKFLOW -->
+    <div class="panel incident-workflow-panel">
+
+        <div class="panel-head">
+            <div>
+                <div class="eyebrow">SECURITY OPERATIONS</div>
+                <h3>Incident Response Workflow</h3>
+            </div>
+            <span class="tiny-tag green">4 STEPS</span>
+        </div>
+
+        <p class="muted incident-form-intro">
+            Follow a structured approach when handling security incidents.
+        </p>
+
+        <div class="checklist soc-checklist">
+
+            <div class="soc-workflow-step">
+                <span class="workflow-number">01</span>
+                <div>
+                    <strong>Identify</strong>
+                    <small>
+                        Review the alert source, timestamp, severity and affected assets.
+                    </small>
+                </div>
+                <span class="workflow-indicator">●</span>
+            </div>
+
+            <div class="soc-workflow-step">
+                <span class="workflow-number">02</span>
+                <div>
+                    <strong>Contain</strong>
+                    <small>
+                        Follow your organization's approved incident response playbook.
+                    </small>
+                </div>
+                <span class="workflow-indicator">●</span>
+            </div>
+
+            <div class="soc-workflow-step">
+                <span class="workflow-number">03</span>
+                <div>
+                    <strong>Eradicate & Recover</strong>
+                    <small>
+                        Coordinate remediation and recovery with system owners.
+                    </small>
+                </div>
+                <span class="workflow-indicator">●</span>
+            </div>
+
+            <div class="soc-workflow-step">
+                <span class="workflow-number">04</span>
+                <div>
+                    <strong>Document & Close</strong>
+                    <small>
+                        Record evidence, decisions and final closure notes.
+                    </small>
+                </div>
+                <span class="workflow-indicator">●</span>
+            </div>
+
+        </div>
+
+        <div class="workflow-note">
+            <span>ⓘ</span>
+            Always follow your organization's security policies before taking action.
+        </div>
+
+    </div>
+
+</div>
+
+<!-- INCIDENT REGISTER -->
+<div class="panel table-panel soc-incident-register">
+
+    <div class="panel-head">
+        <div>
+            <div class="eyebrow">INVESTIGATION DATABASE / 01</div>
+            <h3>Incident Case Register</h3>
+            <p class="muted">Review and update registered security incidents.</p>
+        </div>
+
+        <span class="tiny-tag green">CASE TRACKING</span>
+    </div>
+
+    <!-- SEARCH -->
+    <div class="event-filter-area">
+
+        <div class="event-search">
+            <span>⌕</span>
+            <input
+                type="search"
+                id="incidentSearch"
+                placeholder="Search case ID, title or source IP..."
+                autocomplete="off"
+            >
+        </div>
+
+    </div>
+
+    <!-- STATUS TABS -->
+    <div class="event-status-filter">
+
+        <span class="event-filter-label">CASE STATUS:</span>
+
+        <button type="button"
+                class="event-tab active"
+                data-status="all">
+            All Cases
+        </button>
+
+        <button type="button"
+                class="event-tab"
+                data-status="open">
+            Open
+        </button>
+
+        <button type="button"
+                class="event-tab"
+                data-status="investigating">
+            Investigating
+        </button>
+
+        <button type="button"
+                class="event-tab"
+                data-status="closed">
+            Closed
+        </button>
+
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-scroll soc-event-table-wrap">
+
+        <table id="incidentTable">
+
+            <thead>
+                <tr>
+                    <th>CASE ID</th>
+                    <th>INCIDENT TITLE</th>
+                    <th>SEVERITY</th>
+                    <th>SOURCE IP</th>
+                    <th>ASSIGNED TO</th>
+                    <th>CREATED</th>
+                    <th>STATUS</th>
+                    <th>UPDATE STATUS</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for i in incidents %}
+
+                <tr
+                    class="soc-incident-row"
+                    data-status="{{ i.status|lower }}"
+                    data-severity="{{ i.severity|lower }}"
+                    data-search="{{ (i.id|string ~ ' ' ~ i.title ~ ' ' ~ (i.source_ip or '') ~ ' ' ~ (i.assigned_to or ''))|lower }}"
+                >
+
+                    <td class="mono event-id">
+                        #{{ i.id }}
+                    </td>
+
+                    <td class="incident-title-cell">
+                        {{ i.title }}
+                    </td>
+
+                    <td>
+                        <span class="badge {{ i.severity|lower }}">
+                            {{ i.severity }}
+                        </span>
+                    </td>
+
+                    <td class="mono event-ip">
+                        {{ i.source_ip or '—' }}
+                    </td>
+
+                    <td>
+                        {{ i.assigned_to or '—' }}
+                    </td>
+
+                    <td class="mono event-time">
+                        {{ i.created_at[:16] }}
+                    </td>
+
+                    <td>
+                        {% if i.status == 'Closed' %}
+
+                        <span class="event-status-badge resolved">
+                            <i></i> Closed
+                        </span>
+
+                        {% elif i.status == 'Investigating' %}
+
+                        <span class="event-status-badge investigating">
+                            <i></i> Investigating
+                        </span>
+
+                        {% else %}
+
+                        <span class="event-status-badge open">
+                            <i></i> Open
+                        </span>
+
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <form
+                            method="post"
+                            action="{{ url_for('incident_status', incident_id=i.id) }}"
+                            class="status-form incident-status-form"
+                        >
+
+                            <input
+                                type="hidden"
+                                name="csrf_token"
+                                value="{{ csrf_token() }}"
+                            >
+
+                            <select name="status">
+                                <option {% if i.status == 'Open' %}selected{% endif %}>
+                                    Open
+                                </option>
+
+                                <option {% if i.status == 'Investigating' %}selected{% endif %}>
+                                    Investigating
+                                </option>
+
+                                <option {% if i.status == 'Closed' %}selected{% endif %}>
+                                    Closed
+                                </option>
+                            </select>
+
+                            <button type="submit" class="mini-btn">
+                                Save
+                            </button>
+
+                        </form>
+                    </td>
+
+                </tr>
+
+                {% else %}
+
+                <tr>
+                    <td colspan="8" class="event-empty">
+                        No incidents have been registered yet.
+                    </td>
+                </tr>
+
+                {% endfor %}
+
+                <tr id="incidentNoResults" style="display:none">
+                    <td colspan="8" class="event-empty">
+                        No incidents match your search or selected status.
+                    </td>
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <div class="event-table-footer">
+        <span id="incidentShowing">Showing 0 cases</span>
+        <span>CYBERSENTINEL INCIDENT RESPONSE</span>
+    </div>
+
+</div>
+
+<div class="bottom-note">
+    <span class="online-dot"></span>
+    Incident response management interface
+    <span class="mono">DEMO ENVIRONMENT</span>
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const rows = Array.from(
+        document.querySelectorAll(".soc-incident-row")
+    );
+
+    const searchInput = document.getElementById("incidentSearch");
+    const tabs = document.querySelectorAll(".event-tab");
+    const noResults = document.getElementById("incidentNoResults");
+
+    const total = document.getElementById("incidentTotal");
+    const critical = document.getElementById("incidentCritical");
+    const active = document.getElementById("incidentActive");
+    const closed = document.getElementById("incidentClosed");
+    const showing = document.getElementById("incidentShowing");
+
+    let activeStatus = "all";
+
+    // SUMMARY COUNTS
+    total.textContent = rows.length;
+
+    critical.textContent = rows.filter(
+        row => row.dataset.severity === "critical"
+    ).length;
+
+    active.textContent = rows.filter(
+        row => ["open", "investigating"].includes(row.dataset.status)
+    ).length;
+
+    closed.textContent = rows.filter(
+        row => row.dataset.status === "closed"
+    ).length;
+
+
+    // SEARCH AND STATUS FILTER
+    function filterIncidents() {
+
+        const search = searchInput.value.toLowerCase().trim();
+
+        let visible = 0;
+
+        rows.forEach(row => {
+
+            const matchesSearch =
+                row.dataset.search.includes(search);
+
+            const matchesStatus =
+                activeStatus === "all" ||
+                row.dataset.status === activeStatus;
+
+            const show = matchesSearch && matchesStatus;
+
+            row.style.display = show ? "" : "none";
+
+            if (show) visible++;
+
+        });
+
+        noResults.style.display =
+            visible === 0 ? "" : "none";
+
+        showing.textContent =
+            `Showing ${visible} of ${rows.length} cases`;
+
+    }
+
+
+    // SEARCH
+    searchInput.addEventListener("input", filterIncidents);
+
+
+    // STATUS TABS
+    tabs.forEach(tab => {
+
+        tab.addEventListener("click", function () {
+
+            tabs.forEach(item => item.classList.remove("active"));
+
+            this.classList.add("active");
+
+            activeStatus = this.dataset.status;
+
+            filterIncidents();
+
+        });
+
+    });
+
+
+    filterIncidents();
+
+});
+</script>
+
+{% endblock %}

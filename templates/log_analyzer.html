@@ -1,5 +1,341 @@
-{% extends "base.html" %}{% block page_name %}Log Analyzer{% endblock %}{% block content %}
-<div class="page-heading"><div><div class="eyebrow">DETECTION ENGINE / 05</div><h1>Log analyzer<span class="accent">.</span></h1><p class="muted">Paste authorized sample logs to identify common security signals.</p></div><span class="tiny-tag green">LOCAL PROCESSING</span></div>
-<div class="two-col"><div class="panel"><div class="eyebrow">INPUT DATA</div><h3>Analyze log text</h3><form method="post" class="stack-form">
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>LOG CONTENT</label><textarea name="log_text" rows="13" placeholder="Nov 11 08:15:01 host sshd: Failed password for user from 192.168.1.50&#10;Nov 11 08:15:04 host sshd: Failed password for user from 192.168.1.50&#10;Nov 11 08:15:07 host sshd: Failed password for user from 192.168.1.50" required></textarea><button class="btn primary">Analyze logs →</button></form></div>
-<div class="panel"><div class="eyebrow">ANALYSIS OUTPUT</div><h3>Detection summary</h3>{% if report %}<div class="mini-stats"><div><strong>{{ report.lines }}</strong><small>Lines parsed</small></div><div><strong class="red-text">{{ report.failed }}</strong><small>Auth failures</small></div><div><strong class="orange-text">{{ report.denied }}</strong><small>Denied / blocked</small></div><div><strong>{{ report.errors }}</strong><small>Errors</small></div></div><h4>IP addresses found</h4>{% for ip in report.ips %}<span class="ip-chip">{{ ip }}</span>{% else %}<p class="muted">No IPv4 patterns found.</p>{% endfor %}{% if report.failed >= 3 %}<div class="callout warning">High-priority pattern: repeated authentication failures. A sample event was added to Security Events.</div>{% else %}<div class="callout">No repeated-authentication threshold was triggered in this sample.</div>{% endif %}{% else %}<div class="empty-state"><span>≋</span><p>Submit sample logs to view parsed indicators and detection counts.</p></div>{% endif %}</div></div>{% endblock %}
+
+{% extends "base.html" %}
+
+{% block title %}Log Analyzer · CyberSentinel{% endblock %}
+{% block page_name %}Log Analyzer{% endblock %}
+
+{% block content %}
+
+<!-- HEADER -->
+<div class="soc-heading">
+    <div>
+        <div class="eyebrow">DETECTION ENGINE / 05</div>
+        <h1>Log Analyzer<span class="accent">.</span></h1>
+        <p class="muted">
+            Analyze authorized log samples and identify common security signals.
+        </p>
+    </div>
+
+    <div class="soc-heading-actions">
+        <span class="tiny-tag green">
+            <i class="online-dot"></i> LOCAL PROCESSING
+        </span>
+    </div>
+</div>
+
+<!-- STATUS CARDS -->
+<div class="event-summary-grid log-summary-grid">
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon blue">≋</span>
+        <div>
+            <small>ANALYSIS MODE</small>
+            <strong>LOCAL</strong>
+        </div>
+    </div>
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon red">⚑</span>
+        <div>
+            <small>AUTH DETECTION</small>
+            <strong>ACTIVE</strong>
+        </div>
+    </div>
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon orange">⌕</span>
+        <div>
+            <small>IP EXTRACTION</small>
+            <strong>ENABLED</strong>
+        </div>
+    </div>
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon green">✓</span>
+        <div>
+            <small>EXTERNAL UPLOADS</small>
+            <strong>ZERO</strong>
+        </div>
+    </div>
+
+</div>
+
+<!-- ANALYZER WORKSPACE -->
+<div class="log-workspace-grid">
+
+    <!-- INPUT PANEL -->
+    <div class="panel log-input-panel">
+
+        <div class="panel-head">
+            <div>
+                <div class="eyebrow">INPUT DATA / 01</div>
+                <h3>Log Analysis Console</h3>
+            </div>
+
+            <span class="tiny-tag green">INPUT READY</span>
+        </div>
+
+        <p class="muted log-description">
+            Paste authorized system, authentication or application logs
+            into the analysis console.
+        </p>
+
+        <form method="post" class="stack-form log-analysis-form">
+
+            <input type="hidden" name="csrf_token"
+                   value="{{ csrf_token() }}">
+
+            <div class="log-input-heading">
+                <label for="logText">LOG CONTENT</label>
+                <span>TEXT / LOG FORMAT</span>
+            </div>
+
+            <textarea
+                id="logText"
+                name="log_text"
+                rows="13"
+                placeholder="Nov 11 08:15:01 host sshd: Failed password for user from 192.168.1.50&#10;Nov 11 08:15:04 host sshd: Failed password for user from 192.168.1.50&#10;Nov 11 08:15:07 host sshd: Failed password for user from 192.168.1.50"
+                required
+            ></textarea>
+
+            <div class="log-input-footer">
+                <span id="logLineCount">0 lines</span>
+                <span id="logCharCount">0 characters</span>
+            </div>
+
+            <button type="submit" class="btn primary log-analyze-button">
+                Analyze Logs →
+            </button>
+
+        </form>
+
+        <div class="log-security-note">
+            <span>ⓘ</span>
+            Use only logs you are authorized to analyze. Avoid pasting passwords,
+            access tokens or other secrets.
+        </div>
+
+    </div>
+
+    <!-- OUTPUT PANEL -->
+    <div class="panel log-output-panel">
+
+        <div class="panel-head">
+            <div>
+                <div class="eyebrow">ANALYSIS OUTPUT / 02</div>
+                <h3>Detection Summary</h3>
+            </div>
+
+            <span class="tiny-tag green">PARSER OUTPUT</span>
+        </div>
+
+        {% if report %}
+
+        <!-- METRICS -->
+        <div class="log-detection-grid">
+
+            <div class="log-detection-card">
+                <span class="log-detection-symbol blue">≋</span>
+                <strong>{{ report.lines }}</strong>
+                <small>Lines Parsed</small>
+            </div>
+
+            <div class="log-detection-card">
+                <span class="log-detection-symbol red">⚑</span>
+                <strong class="red-text">{{ report.failed }}</strong>
+                <small>Auth Failures</small>
+            </div>
+
+            <div class="log-detection-card">
+                <span class="log-detection-symbol orange">▲</span>
+                <strong class="orange-text">{{ report.denied }}</strong>
+                <small>Denied / Blocked</small>
+            </div>
+
+            <div class="log-detection-card">
+                <span class="log-detection-symbol yellow">!</span>
+                <strong>{{ report.errors }}</strong>
+                <small>Errors</small>
+            </div>
+
+        </div>
+
+        <!-- DETECTION RESULT -->
+        <div class="log-detection-result">
+
+            <div class="eyebrow">DETECTION ASSESSMENT</div>
+
+            {% if report.failed >= 3 %}
+
+            <div class="log-alert-state high">
+                <span class="log-alert-icon">!</span>
+                <div>
+                    <strong>Repeated Authentication Failures</strong>
+                    <p>
+                        High-priority pattern detected. A sample event
+                        was added to Security Events.
+                    </p>
+                </div>
+            </div>
+
+            {% else %}
+
+            <div class="log-alert-state normal">
+                <span class="log-alert-icon">✓</span>
+                <div>
+                    <strong>No Repeated-Authentication Threshold</strong>
+                    <p>
+                        The configured authentication failure threshold
+                        was not triggered in this sample.
+                    </p>
+                </div>
+            </div>
+
+            {% endif %}
+
+        </div>
+
+        <!-- IP ADDRESSES -->
+        <div class="log-ip-section">
+
+            <div class="log-ip-heading">
+                <h4>Extracted IP Addresses</h4>
+                <span class="tiny-tag blue">
+                    {{ report.ips|length }} FOUND
+                </span>
+            </div>
+
+            <div class="log-ip-list">
+
+                {% for ip in report.ips %}
+
+                <span class="ip-chip log-ip-chip">
+                    <span class="online-dot"></span>
+                    {{ ip }}
+                </span>
+
+                {% else %}
+
+                <p class="muted">
+                    No IPv4 patterns found in this sample.
+                </p>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+        {% else %}
+
+        <div class="log-empty-state">
+            <div class="log-empty-icon">≋</div>
+            <strong>Awaiting Log Analysis</strong>
+            <p>
+                Submit a log sample to view parsed lines,
+                security signals and extracted IP addresses.
+            </p>
+
+            <span class="tiny-tag green">READY FOR INPUT</span>
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+<!-- DETECTION REFERENCE -->
+<div class="panel log-reference-panel">
+
+    <div class="panel-head">
+        <div>
+            <div class="eyebrow">ANALYST REFERENCE / 03</div>
+            <h3>Detection Categories</h3>
+        </div>
+
+        <span class="tiny-tag blue">LOG SIGNALS</span>
+    </div>
+
+    <div class="log-reference-grid">
+
+        <div class="log-reference-item">
+            <span class="log-reference-icon red">⚑</span>
+            <div>
+                <strong>Authentication Failures</strong>
+                <p>Failed login attempts and password failures.</p>
+            </div>
+        </div>
+
+        <div class="log-reference-item">
+            <span class="log-reference-icon orange">▲</span>
+            <div>
+                <strong>Denied / Blocked</strong>
+                <p>Access denied or blocked activity patterns.</p>
+            </div>
+        </div>
+
+        <div class="log-reference-item">
+            <span class="log-reference-icon yellow">!</span>
+            <div>
+                <strong>System Errors</strong>
+                <p>Error messages found in the supplied logs.</p>
+            </div>
+        </div>
+
+        <div class="log-reference-item">
+            <span class="log-reference-icon blue">⌕</span>
+            <div>
+                <strong>IP Extraction</strong>
+                <p>IPv4 patterns identified in the input text.</p>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<div class="bottom-note">
+    <span class="online-dot"></span>
+    Local log analysis interface
+    <span class="mono">DEMO ENVIRONMENT</span>
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const logInput = document.getElementById("logText");
+    const lineCount = document.getElementById("logLineCount");
+    const charCount = document.getElementById("logCharCount");
+
+    if (!logInput) return;
+
+    function updateLogCount() {
+
+        const value = logInput.value;
+
+        const lines = value.trim()
+            ? value.split(/\r\n|\r|\n/).length
+            : 0;
+
+        lineCount.textContent =
+            `${lines} ${lines === 1 ? "line" : "lines"}`;
+
+        charCount.textContent =
+            `${value.length} characters`;
+
+    }
+
+    logInput.addEventListener("input", updateLogCount);
+
+    updateLogCount();
+
+});
+</script>
+
+{% endblock %}

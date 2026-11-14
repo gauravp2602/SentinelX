@@ -1,133 +1,312 @@
 
 {% extends "base.html" %}
 
-{% block title %}Overview · CyberSentinel{% endblock %}
-{% block page_name %}Overview{% endblock %}
+{% block title %}SOC Command Center · CyberSentinel{% endblock %}
+{% block page_name %}SOC Command Center{% endblock %}
 
 {% block content %}
 
-<div class="page-heading">
+<!-- PAGE HEADER -->
+<div class="soc-heading">
     <div>
-        <div class="eyebrow">MONITORING CENTER / 01</div>
-        <h1>Security overview<span class="accent">.</span></h1>
+        <div class="eyebrow">SECURITY OPERATIONS CENTER / 01</div>
+        <h1>SOC Command Center<span class="accent">.</span></h1>
         <p class="muted">
-            Your environment at a glance. Monitor events, investigate threats and manage incidents.
+            Monitor security events, investigate threats and protect your environment.
         </p>
     </div>
-    <a class="btn outline" href="{{ url_for('events') }}">View all events ↗</a>
+
+    <div class="soc-heading-actions">
+        <span class="tiny-tag green">
+            <i class="online-dot"></i> SYSTEM ONLINE
+        </span>
+        <a class="btn outline" href="{{ url_for('events') }}">
+            View All Events ↗
+        </a>
+    </div>
 </div>
 
-<div class="stat-grid">
+<!-- TOP FILTER BAR -->
+<div class="soc-filter-bar">
+    <div class="soc-filter-active">◈ All Security Events</div>
+    <a href="{{ url_for('events') }}">Security Events</a>
+    <a href="{{ url_for('incidents') }}">Incidents</a>
+    <a href="{{ url_for('reports') }}">Reports</a>
+    <span class="soc-filter-spacer"></span>
+    <span class="soc-date-label">SECURITY MONITORING</span>
+</div>
 
-    <div class="stat-card">
-        <div class="stat-top">TOTAL EVENTS <span class="stat-icon">⌁</span></div>
-        <div class="stat-value">{{ stats.total }}</div>
-        <div class="stat-foot">Recorded security telemetry</div>
+<!-- MAIN METRICS -->
+<div class="soc-metric-grid">
+
+    <div class="soc-metric-card">
+        <div class="soc-metric-top">
+            <span>THREAT DETECTION</span>
+            <span class="soc-metric-icon red">⌁</span>
+        </div>
+        <div class="soc-metric-value red-text">{{ stats.total }}</div>
+        <div class="soc-metric-bottom">
+            Total recorded security events
+        </div>
+        <div class="soc-mini-bar red-bar"></div>
     </div>
 
-    <div class="stat-card">
-        <div class="stat-top">OPEN INCIDENTS <span class="stat-icon orange">◈</span></div>
-        <div class="stat-value">{{ stats.open_incidents }}</div>
-        <div class="stat-foot">Require analyst attention</div>
+    <div class="soc-metric-card">
+        <div class="soc-metric-top">
+            <span>SECURITY EVENTS</span>
+            <span class="soc-metric-icon blue">▦</span>
+        </div>
+        <div class="soc-metric-value blue-text">
+            {{ stats.open_events + stats.resolved_events }}
+        </div>
+        <div class="soc-metric-bottom">
+            Open and resolved events
+        </div>
+        <div class="soc-mini-grid">
+            {% for i in range(21) %}
+                <span></span>
+            {% endfor %}
+        </div>
     </div>
 
-    <div class="stat-card">
-        <div class="stat-top">CRITICAL ALERTS <span class="stat-icon red">⚑</span></div>
-        <div class="stat-value">{{ stats.critical }}</div>
-        <div class="stat-foot">Critical severity events</div>
+    <div class="soc-metric-card">
+        <div class="soc-metric-top">
+            <span>SYSTEM HEALTH</span>
+            <span class="soc-metric-icon green">◉</span>
+        </div>
+        <div class="soc-metric-value green-text">
+            {{ stats.health_score }}%
+        </div>
+        <div class="soc-metric-bottom">
+            {{ stats.health_status }} · Project health indicator
+        </div>
+        <div class="soc-health-bars">
+            {% for i in range(7) %}
+                <span class="{% if i == 3 %}warning{% endif %}"></span>
+            {% endfor %}
+        </div>
     </div>
 
-    <div class="stat-card">
-        <div class="stat-top">HIGH PRIORITY <span class="stat-icon yellow">▲</span></div>
-        <div class="stat-value">{{ stats.high }}</div>
-        <div class="stat-foot">High severity events</div>
+    <div class="soc-metric-card">
+        <div class="soc-metric-top">
+            <span>OPEN INCIDENTS</span>
+            <span class="soc-metric-icon orange">◈</span>
+        </div>
+        <div class="soc-metric-value orange-text">
+            {{ stats.open_incidents }}
+        </div>
+        <div class="soc-metric-bottom">
+            Require analyst attention
+        </div>
+        <a class="soc-card-link" href="{{ url_for('incidents') }}">
+            Investigate incidents →
+        </a>
     </div>
 
 </div>
 
-<div class="two-col">
+<!-- SECURITY SCORE AND RECENT INCIDENTS -->
+<div class="soc-main-grid">
 
-    <div class="panel">
+    <div class="soc-left-column">
+
+        <!-- SECURITY SCORE -->
+        <div class="soc-score-panel">
+            <div class="soc-panel-title">
+                <div>
+                    <div class="eyebrow">SECURITY POSTURE</div>
+                    <h3>Security Health Score</h3>
+                </div>
+                <span class="soc-score-trophy">♜</span>
+            </div>
+
+            <div class="soc-score-content">
+                <div class="soc-score-number">
+                    {{ stats.health_score }}<small>/100</small>
+                </div>
+
+                <div class="soc-score-status">
+                    <span class="soc-score-track">
+                        <span style="width: {{ stats.health_score }}%"></span>
+                    </span>
+                    <span class="soc-score-label">
+                        {{ stats.health_status }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="soc-score-note">
+                <span>Security posture indicator</span>
+                <span class="tiny-tag">DEMO METRIC</span>
+            </div>
+        </div>
+
+        <!-- THREAT ACTIVITY -->
+        <div class="panel soc-chart-panel">
+            <div class="panel-head">
+                <div>
+                    <div class="eyebrow">SECURITY ANALYTICS</div>
+                    <h3>Threat Activity Timeline</h3>
+                </div>
+                <span class="tiny-tag">LAST 7 DAYS</span>
+            </div>
+
+            <div class="soc-timeline-chart">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- RECENT INCIDENTS -->
+    <div class="panel soc-incidents-panel">
         <div class="panel-head">
             <div>
-                <div class="eyebrow">EVENT DISTRIBUTION</div>
-                <h3>Threat landscape</h3>
+                <div class="eyebrow">INCIDENT RESPONSE</div>
+                <h3>Recent Security Incidents</h3>
+            </div>
+            <a class="text-link" href="{{ url_for('incidents') }}">View All →</a>
+        </div>
+
+        <div class="soc-incident-list">
+
+            {% for incident in incidents %}
+
+            <div class="soc-incident-item">
+                <div class="soc-incident-symbol">
+                    {% if incident.severity|lower == 'critical' %}
+                        ⚠
+                    {% elif incident.severity|lower == 'high' %}
+                        !
+                    {% else %}
+                        ◈
+                    {% endif %}
+                </div>
+
+                <div class="soc-incident-info">
+                    <strong>{{ incident.title }}</strong>
+                    <small>
+                        {{ incident.created_at }}
+                    </small>
+                </div>
+
+                <span class="badge {{ incident.severity|lower }}">
+                    {{ incident.severity }}
+                </span>
+            </div>
+
+            {% else %}
+
+            <div class="soc-empty-state">
+                <span>✓</span>
+                <strong>No incidents available</strong>
+                <small>New incidents will appear here.</small>
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+        <a href="{{ url_for('incidents') }}" class="soc-incident-footer">
+            View Incident Management →
+        </a>
+    </div>
+
+</div>
+
+<!-- SECURITY TOOLS AND SEVERITY ANALYTICS -->
+<div class="soc-tools-grid">
+
+    <div class="panel soc-tools-panel">
+        <div class="panel-head">
+            <div>
+                <div class="eyebrow">SECURITY WORKSPACE</div>
+                <h3>Investigation Tools</h3>
+            </div>
+            <span class="tiny-tag green">AVAILABLE</span>
+        </div>
+
+        <div class="soc-tool-grid">
+
+            <a href="{{ url_for('log_analyzer') }}" class="soc-tool-card">
+                <span class="soc-tool-icon blue">▤</span>
+                <strong>SIEM Log Analyzer</strong>
+                <small>Security log analysis</small>
+                <span class="soc-tool-status">● Available</span>
+            </a>
+
+            <a href="{{ url_for('threat_intel') }}" class="soc-tool-card">
+                <span class="soc-tool-icon orange">⚠</span>
+                <strong>Threat Intelligence</strong>
+                <small>IP investigation</small>
+                <span class="soc-tool-status">● Available</span>
+            </a>
+
+            <a href="{{ url_for('file_integrity') }}" class="soc-tool-card">
+                <span class="soc-tool-icon red">◉</span>
+                <strong>File Integrity</strong>
+                <small>SHA-256 verification</small>
+                <span class="soc-tool-status">● Available</span>
+            </a>
+
+            <a href="{{ url_for('network_lab') }}" class="soc-tool-card">
+                <span class="soc-tool-icon purple">⌘</span>
+                <strong>Network Lab</strong>
+                <small>Subnet and IP tools</small>
+                <span class="soc-tool-status">● Available</span>
+            </a>
+
+            <a href="{{ url_for('events') }}" class="soc-tool-card">
+                <span class="soc-tool-icon green">▦</span>
+                <strong>Security Events</strong>
+                <small>Event investigation</small>
+                <span class="soc-tool-status">● Available</span>
+            </a>
+
+            <a href="{{ url_for('reports') }}" class="soc-tool-card">
+                <span class="soc-tool-icon pink">▥</span>
+                <strong>Security Reports</strong>
+                <small>Reports and exports</small>
+                <span class="soc-tool-status">● Available</span>
+            </a>
+
+        </div>
+    </div>
+
+    <!-- SEVERITY DISTRIBUTION -->
+    <div class="panel soc-severity-panel">
+        <div class="panel-head">
+            <div>
+                <div class="eyebrow">THREAT ANALYSIS</div>
+                <h3>Severity Distribution</h3>
             </div>
             <span class="tiny-tag">ALL TIME</span>
         </div>
 
-        <div class="chart-wrap">
+        <div class="soc-severity-chart">
             <canvas id="severityChart"></canvas>
         </div>
 
-        <div class="legend-row">
+        <div class="soc-severity-legend">
             <span><i class="dot critical"></i>Critical {{ stats.critical }}</span>
             <span><i class="dot high"></i>High {{ stats.high }}</span>
             <span><i class="dot medium"></i>Medium {{ stats.medium }}</span>
             <span><i class="dot low"></i>Low {{ stats.low }}</span>
-        </div>
-    </div>
-
-    <div class="panel">
-        <div class="panel-head">
-            <div>
-                <div class="eyebrow">QUICK ACTIONS</div>
-                <h3>Investigation tools</h3>
-            </div>
-            <span class="tiny-tag green">READY</span>
-        </div>
-
-        <div class="quick-list">
-
-            <a href="{{ url_for('log_analyzer') }}">
-                <span class="quick-icon">≋</span>
-                <span>
-                    <b>Analyze security logs</b>
-                    <small>Find suspicious patterns in pasted logs</small>
-                </span>
-                <strong>→</strong>
-            </a>
-
-            <a href="{{ url_for('threat_intel') }}">
-                <span class="quick-icon">◎</span>
-                <span>
-                    <b>Investigate an IP</b>
-                    <small>Check local demo threat indicators</small>
-                </span>
-                <strong>→</strong>
-            </a>
-
-            <a href="{{ url_for('file_integrity') }}">
-                <span class="quick-icon">⌗</span>
-                <span>
-                    <b>Verify file integrity</b>
-                    <small>Build and update SHA-256 baselines</small>
-                </span>
-                <strong>→</strong>
-            </a>
-
-            <a href="{{ url_for('network_lab') }}">
-                <span class="quick-icon">⌘</span>
-                <span>
-                    <b>Network lab</b>
-                    <small>Private subnet calculator</small>
-                </span>
-                <strong>→</strong>
-            </a>
-
+            <span><i class="dot info"></i>Info {{ stats.info }}</span>
         </div>
     </div>
 
 </div>
 
-<div class="panel table-panel">
+<!-- RECENT SECURITY EVENTS -->
+<div class="panel table-panel soc-events-panel">
 
     <div class="panel-head">
         <div>
-            <div class="eyebrow">LIVE TELEMETRY FEED</div>
-            <h3>Recent security events</h3>
+            <div class="eyebrow">MONITORING ACTIVITY</div>
+            <h3>Recent Security Events</h3>
         </div>
-        <a class="text-link" href="{{ url_for('events') }}">View event log →</a>
+        <a class="text-link" href="{{ url_for('events') }}">View All Events →</a>
     </div>
 
     <div class="table-scroll">
@@ -153,11 +332,13 @@
                             {{ e.severity }}
                         </span>
                     </td>
-                    <td><span class="status">{{ e.status }}</span></td>
+                    <td>
+                        <span class="status">{{ e.status }}</span>
+                    </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="5">No events yet.</td>
+                    <td colspan="5">No security events available.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -166,15 +347,18 @@
 
 </div>
 
-<div class="bottom-note">
+<!-- FOOTER STATUS -->
+<div class="bottom-note soc-bottom-note">
     <span class="online-dot"></span>
-    Demo telemetry is preloaded. Add your own sample logs to test the analysis workflow.
-    <span class="mono">ENV: LOCAL</span>
+    CyberSentinel SOC monitoring interface
+    <span class="mono">DEMO ENVIRONMENT</span>
 </div>
 
 {% endblock %}
 
+
 {% block scripts %}
+
 <script>
     const sevData = {{ [
         stats.critical,
@@ -183,7 +367,11 @@
         stats.low,
         stats.info
     ] | tojson }};
+
+    const trendLabels = {{ stats.trend_labels | tojson }};
+    const trendCounts = {{ stats.trend_counts | tojson }};
 </script>
 
-<script src="{{ url_for('static',filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
 {% endblock %}

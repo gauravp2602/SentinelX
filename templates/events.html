@@ -1,4 +1,367 @@
-{% extends "base.html" %}{% block page_name %}Security Events{% endblock %}{% block content %}
-<div class="page-heading"><div><div class="eyebrow">DETECTION / 02</div><h1>Security events<span class="accent">.</span></h1><p class="muted">Review, filter and resolve security telemetry.</p></div><form class="inline-filter"><select name="severity"><option value="">All severities</option>{% for s in ['Critical','High','Medium','Low','Info'] %}<option {% if selected==s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select><button class="btn outline">Filter</button></form></div>
-<div class="panel table-panel"><div class="table-scroll"><table><thead><tr><th>ID</th><th>TIMESTAMP</th><th>SOURCE IP</th><th>EVENT TYPE</th><th>MESSAGE</th><th>SEVERITY</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody>{% for e in events %}<tr><td class="mono">#{{ e.id }}</td><td class="mono">{{ e.timestamp }}</td><td class="mono">{{ e.source_ip }}</td><td>{{ e.event_type }}</td><td class="message-cell">{{ e.message }}</td><td><span class="badge {{ e.severity|lower }}">{{ e.severity }}</span></td><td>{{ e.status }}</td><td>{% if e.status!='Resolved' %}<form method="post" action="{{ url_for('resolve_event',event_id=e.id) }}">
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="mini-btn">Resolve</button></form>{% else %}—{% endif %}</td></tr>{% else %}<tr><td colspan="8">No matching events.</td></tr>{% endfor %}</tbody></table></div></div>{% endblock %}
+
+{% extends "base.html" %}
+
+{% block title %}Security Events · CyberSentinel{% endblock %}
+{% block page_name %}Security Events{% endblock %}
+
+{% block content %}
+
+<!-- PAGE HEADER -->
+<div class="soc-heading">
+    <div>
+        <div class="eyebrow">DETECTION CENTER / 02</div>
+        <h1>Security Events<span class="accent">.</span></h1>
+        <p class="muted">
+            Monitor, investigate and manage security telemetry across your environment.
+        </p>
+    </div>
+
+    <div class="soc-heading-actions">
+        <span class="tiny-tag green">
+            <i class="online-dot"></i> MONITORING ACTIVE
+        </span>
+        <a href="{{ url_for('reports') }}" class="btn outline">
+            View Reports ↗
+        </a>
+    </div>
+</div>
+
+<!-- EVENT SUMMARY -->
+<div class="event-summary-grid">
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon blue">▦</span>
+        <div>
+            <small>DISPLAYED EVENTS</small>
+            <strong id="eventTotal">0</strong>
+        </div>
+    </div>
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon red">⚑</span>
+        <div>
+            <small>CRITICAL EVENTS</small>
+            <strong id="eventCritical">0</strong>
+        </div>
+    </div>
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon orange">▲</span>
+        <div>
+            <small>HIGH PRIORITY</small>
+            <strong id="eventHigh">0</strong>
+        </div>
+    </div>
+
+    <div class="event-summary-card">
+        <span class="event-summary-icon green">✓</span>
+        <div>
+            <small>RESOLVED EVENTS</small>
+            <strong id="eventResolved">0</strong>
+        </div>
+    </div>
+
+</div>
+
+<!-- EVENT MANAGEMENT -->
+<div class="panel soc-event-management">
+
+    <div class="panel-head">
+        <div>
+            <div class="eyebrow">THREAT MONITORING</div>
+            <h3>Event Management Console</h3>
+        </div>
+
+        <span class="tiny-tag green">EVENT DATABASE</span>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="event-filter-area">
+
+        <div class="event-search">
+            <span>⌕</span>
+            <input
+                type="search"
+                id="eventSearch"
+                placeholder="Search IP, event type or message..."
+                autocomplete="off"
+            >
+        </div>
+
+        <form method="get" class="event-filter-form">
+
+            <select name="severity" aria-label="Filter by severity">
+                <option value="">All Severities</option>
+
+                {% for s in ['Critical','High','Medium','Low','Info'] %}
+                <option value="{{ s }}"
+                    {% if selected == s %}selected{% endif %}>
+                    {{ s }}
+                </option>
+                {% endfor %}
+            </select>
+
+            <button type="submit" class="btn outline">
+                Apply Filter
+            </button>
+
+            <a href="{{ url_for('events') }}" class="event-reset">
+                Reset
+            </a>
+
+        </form>
+
+    </div>
+
+    <!-- STATUS FILTER -->
+    <div class="event-status-filter">
+        <span class="event-filter-label">QUICK FILTER:</span>
+
+        <button type="button" class="event-tab active" data-status="all">
+            All Events
+        </button>
+
+        <button type="button" class="event-tab" data-status="open">
+            Open
+        </button>
+
+        <button type="button" class="event-tab" data-status="resolved">
+            Resolved
+        </button>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-scroll soc-event-table-wrap">
+
+        <table id="securityEventsTable">
+
+            <thead>
+                <tr>
+                    <th>EVENT ID</th>
+                    <th>TIMESTAMP</th>
+                    <th>SOURCE IP</th>
+                    <th>EVENT TYPE</th>
+                    <th>MESSAGE</th>
+                    <th>SEVERITY</th>
+                    <th>STATUS</th>
+                    <th>ACTION</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for e in events %}
+
+                <tr
+                    class="soc-event-row"
+                    data-severity="{{ e.severity|lower }}"
+                    data-status="{{ e.status|lower }}"
+                    data-search="{{ (e.id|string ~ ' ' ~ e.source_ip ~ ' ' ~ e.event_type ~ ' ' ~ e.message)|lower }}"
+                >
+
+                    <td class="mono event-id">
+                        #{{ e.id }}
+                    </td>
+
+                    <td class="mono event-time">
+                        {{ e.timestamp }}
+                    </td>
+
+                    <td class="mono event-ip">
+                        {{ e.source_ip }}
+                    </td>
+
+                    <td class="event-type">
+                        {{ e.event_type }}
+                    </td>
+
+                    <td class="message-cell event-message">
+                        {{ e.message }}
+                    </td>
+
+                    <td>
+                        <span class="badge {{ e.severity|lower }}">
+                            {{ e.severity }}
+                        </span>
+                    </td>
+
+                    <td>
+                        {% if e.status == 'Resolved' %}
+                        <span class="event-status-badge resolved">
+                            <i></i> Resolved
+                        </span>
+                        {% else %}
+                        <span class="event-status-badge open">
+                            <i></i> Open
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if e.status != 'Resolved' %}
+
+                        <form method="post"
+                              action="{{ url_for('resolve_event', event_id=e.id) }}">
+
+                            <input
+                                type="hidden"
+                                name="csrf_token"
+                                value="{{ csrf_token() }}"
+                            >
+
+                            <button type="submit" class="event-resolve-btn">
+                                Resolve
+                            </button>
+
+                        </form>
+
+                        {% else %}
+
+                        <span class="event-completed">Completed ✓</span>
+
+                        {% endif %}
+                    </td>
+
+                </tr>
+
+                {% else %}
+
+                <tr>
+                    <td colspan="8" class="event-empty">
+                        No matching security events found.
+                    </td>
+                </tr>
+
+                {% endfor %}
+
+                <tr id="eventNoResults" style="display:none">
+                    <td colspan="8" class="event-empty">
+                        No events match your search or selected status.
+                    </td>
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <div class="event-table-footer">
+        <span id="eventShowing">Showing 0 events</span>
+        <span>CYBERSENTINEL SECURITY MONITORING</span>
+    </div>
+
+</div>
+
+<div class="bottom-note">
+    <span class="online-dot"></span>
+    Security event monitoring interface
+    <span class="mono">DEMO ENVIRONMENT</span>
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const rows = Array.from(
+        document.querySelectorAll(".soc-event-row")
+    );
+
+    const searchInput = document.getElementById("eventSearch");
+    const tabs = document.querySelectorAll(".event-tab");
+
+    const noResults = document.getElementById("eventNoResults");
+
+    const total = document.getElementById("eventTotal");
+    const critical = document.getElementById("eventCritical");
+    const high = document.getElementById("eventHigh");
+    const resolved = document.getElementById("eventResolved");
+
+    const showing = document.getElementById("eventShowing");
+
+    let activeStatus = "all";
+
+    // SUMMARY COUNTS
+    total.textContent = rows.length;
+
+    critical.textContent = rows.filter(
+        row => row.dataset.severity === "critical"
+    ).length;
+
+    high.textContent = rows.filter(
+        row => row.dataset.severity === "high"
+    ).length;
+
+    resolved.textContent = rows.filter(
+        row => row.dataset.status === "resolved"
+    ).length;
+
+
+    // FILTER EVENTS
+    function filterEvents() {
+
+        const search = searchInput.value.toLowerCase().trim();
+
+        let visible = 0;
+
+        rows.forEach(row => {
+
+            const matchesSearch =
+                row.dataset.search.includes(search);
+
+            const matchesStatus =
+                activeStatus === "all" ||
+                (activeStatus === "open" &&
+                    row.dataset.status !== "resolved") ||
+                (activeStatus === "resolved" &&
+                    row.dataset.status === "resolved");
+
+            const show = matchesSearch && matchesStatus;
+
+            row.style.display = show ? "" : "none";
+
+            if (show) visible++;
+
+        });
+
+        noResults.style.display =
+            visible === 0 ? "" : "none";
+
+        showing.textContent =
+            `Showing ${visible} of ${rows.length} events`;
+
+    }
+
+
+    // SEARCH
+    searchInput.addEventListener("input", filterEvents);
+
+
+    // STATUS TABS
+    tabs.forEach(tab => {
+
+        tab.addEventListener("click", function () {
+
+            tabs.forEach(item => item.classList.remove("active"));
+
+            this.classList.add("active");
+
+            activeStatus = this.dataset.status;
+
+            filterEvents();
+
+        });
+
+    });
+
+
+    filterEvents();
+
+});
+</script>
+
+{% endblock %}
